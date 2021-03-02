@@ -329,16 +329,13 @@ func main() {
 	http.HandleFunc("/404.html", gohttp.RouteNotFound)
 	http.HandleFunc("/", routeHappyHandler) // golden happy path because why not?
 
-	// LogDebug.Printf(IdentifyBuild())
 	go core.PruneExpiringLinks()
 
 	// MakeStuff()
 
 	p := fmt.Sprintf("%s:%d", core.ListenAddress, core.ListenPort)
 	err := http.ListenAndServe(p, nil)
-	// err := http.ListenAndServeTLS(p, "go2.home.cwb.crt", "go2.home.cwb.key", nil)
 	if err != nil {
 		core.LogError.Fatal(err)
 	}
-
 }
