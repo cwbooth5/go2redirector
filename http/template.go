@@ -150,7 +150,7 @@ func (m *ModelIndex) IsSpecial() bool {
 
 // IdentifyBuild simply returns the sha256sum of the redirector binary for simple versioning.
 func (m *ModelIndex) IdentifyBuild() string {
-	f, err := os.Open("r3")
+	f, err := os.Open("go2redirector")
 	if err != nil {
 		log.Fatal(err)
 	}
