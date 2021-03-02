@@ -80,8 +80,11 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 	if inputKeyword != "" {
 		core.LogDebug.Printf("User supplied/input box keyword: %s\n", inputKeyword)
 		// if the keyword has/slashes/within then we need to just use the first field here.
-		workingKeyword := strings.Split(inputKeyword, "/")[0]
-		pth.Keyword, _ = core.MakeNewKeyword(workingKeyword)
+		inputSplit := strings.Split(inputKeyword, "/")
+		pth.Keyword, _ = core.MakeNewKeyword(inputSplit[0])
+		if len(inputSplit) > 1 {
+			pth.Tag = inputSplit[1]
+		}
 	}
 	core.LogDebug.Printf("parsed path in handle keyword: %s\n", pth.Keyword)
 	ll, exists := core.LinkDataBase.Lists[pth.Keyword]
