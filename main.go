@@ -240,7 +240,12 @@ func routeHappyHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		// process it as a keyword
 		var redirect bool
-		core.LogDebug.Printf("\tKeyword processing on path: %s\n", p)
+		core.LogDebug.Printf("\tDefault handling hit for path: %s\n", p)
+		// special cases for common defaults browsers request
+		if p == "/favicon.ico" {
+			http.Error(w, "nope", http.StatusNotFound)
+			return // until we have a favicon..
+		}
 		tmpl, model, redirect, _ := handleKeyword(w, r)
 		if !redirect {
 			gohttp.RenderTemplate(w, tmpl, &model)
