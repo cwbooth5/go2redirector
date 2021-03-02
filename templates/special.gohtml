@@ -1,0 +1,44 @@
+{{ define "title" }}<title>go/{{ .Keyword }}</title>{{ end }}
+{{ define "content" }}
+<div class="row-fluid">
+    <div class="span6 column">
+        <div class="panel panel-default">
+            <table class="table table-striped">
+                <tr><td colspan="3"><h4 class="center"><a href="/special">Special Cases</a></h4></td></tr>
+                {{ range .LinkDB.Links }}
+                  {{ if .Special }}
+                  <tr>
+                      <td>
+                        <b>
+                          <a title="RANK" class="pull-left fineprint" style="width: 1em;">#{{ .ID }}</a>
+                        </b>
+                        <div class="container-fluid link" id="TODO">
+                          <div class="shallow">
+                            <a title="///" href="/">
+                              <div class="shallow example span4">
+                                &nbsp;
+                              </div>
+                              
+                              <div class="shallow span8">{{ .Title }}</div>
+                            </a>
+                          </div>
+                          <div class="fineprint shallow meta text">
+                            
+                              <a href="/.dotpage" title="TODO"><b>{{ .Lists }} </b></a>
+                          </div>
+                          
+                          
+                        </div>
+                      </td>
+                      <td>
+                        <div class="pull-right">
+                          <a title="Edit link #{{ .ID }}" href="/_link_/{{ .ID }}"><img border="0" src="/static/img/edititem32x32.png"></a>
+                        </div>
+                      </td>
+                    </tr>
+                    {{ end }}
+                  {{ end }}
+            </table>
+        </div>
+    </div> 
+{{ end }}

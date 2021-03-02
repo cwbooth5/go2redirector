@@ -1,0 +1,22 @@
+{{ define "title" }}<title>{{ .Title }}</title>{{ end }}
+
+{{ define "content" }}
+<style>
+    body {
+      background-color: black;
+      color: white;
+    }
+    </style>
+
+<div class="container">
+    <div>
+        <h1>Whoops!</h1>
+        <h4>{{ .Title }}</h4>
+    </div>
+    <div class="row no-gutters">
+      <div class="col align-self-end">
+        <img src="/static/img/dog.gif"> 
+      </div>
+    </div>
+  </div>
+{{ end }}

@@ -1,0 +1,123 @@
+{{ define "title" }}<title>{{ .RedirectorName }}/{{ .Keyword }}</title>{{ end }}
+{{ define "content" }}
+
+{{ $behavior := .GetBehavior }}
+
+<div class="row">
+    <!-- {{if .KeywordExists }}<h3 class="center">{{ .Keyword }}</h3>{{ end }} -->
+    <div class="col-6">
+      <div class="card">
+         <!-- Check here to see if this keyword exists. If so, show them the behavior change table. -->
+          {{ if .KeywordExists }}
+          <div class="card-header text-center">
+            <form action="/api/behavior/" method="POST">
+              <div class="input-group behavior-selector">
+                <div class="input-group-prepend">
+                  <label class="input-group-text" for="inputGroupSelect01"><a href="/{{ .Keyword }}"><span class="go2keyword go2keyword-small">{{ .RedirectorName }}/{{ .Keyword }}</span></a>&nbsp redirects to</label>
+                  <input type="hidden" name="keyword" value="{{ .Keyword }}"/>
+                  <input type="hidden" name="internal" value="true"/>
+
+                </div>
+                <select class="form-control" name="behavior">
+                  <option value="-1" {{ if eq $behavior "-1" }}selected{{ end }}>this page</option>
+                  <option value="-2" {{ if eq $behavior "-2" }}selected{{ end }}>freshest link</option>
+                  <option value="-3" {{ if eq $behavior "-3" }}selected{{ end }}>most used link</option>
+                  <option value="-4" {{ if eq $behavior "-4" }}selected{{ end }}>random link</option>
+                  {{ range $idx, $value := .MtimeSort .Keyword }}
+                  {{/* The *link.ID is going to be an integer, so cast it to a string right here for comparison. */}}
+                  {{ $idstring := .ID | printf "%v" }}
+                  <option value="{{ .ID }}" {{ if eq $behavior $idstring }}selected{{ end }}>{{ .Title }}</option>
+                  {{ end }}
+                </select>
+
+                <div class="input-group-append">
+                  <button class="btn btn-outline-secondary" type="submit" value="Change Behavior">Change Behavior</button>
+                </div>
+              </div>
+            </form>
+            <div>
+              {{/* {{ if ne $behavior "-1" }}
+              <samp class="center">{{ .ListURL }}</samp>
+              {{- end }} */}}
+            </div>
+          </div>
+          {{- end }}
+          {{ if not .KeywordExists }}
+              <h4 class="center">No links for this keyword: <span class="go2keyword go2keyword-large">{{ .Keyword }}</span></h4>
+              <a role="button" class="btn btn-primary btn-block-go2" title="Edit this link" href="/_link_/0?returnto={{ .Keyword }}">Create new keyword by adding the first link</a>
+          {{ else }}
+        <a role="button" class="btn btn-primary btn-block-go2" title="Edit this link" href="/_link_/0?returnto={{ .Keyword }}">Add New Link</a>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Tag</th>
+              <th>Title</th>
+              <th>Lists</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+          {{ range $idx, $val := .MtimeSort .Keyword }}
+            {{ $prettydelta := $.PrettyTime $val.Mtime }}
+            <tr>
+              <td><a title="Updated {{ $prettydelta }}">{{ if eq $idx 0 }}<span class="badge badge-go2">Freshest!</span>{{ else }}{{ $idx }}{{ end }}</a></td>
+              <td>
+              {{ $thislist := $.GetMyList $.Keyword }}
+               {{ $thistag := $thislist.GetTag .ID }}
+              {{ $thistag }}
+              </td>
+              <td>
+                <a title="{{ .URL }}" href="{{ .URL }}"><span>{{ .Title }}</span></a>
+                {{ $also := .AKA }}
+                {{ range $also }}
+                <a class="fineprint" title="{{ .URL }}" href="/_link_/{{ .ID }}?returnto={{ $.Keyword }}"><p class="font-italic">"{{ .Title }}"</p><br></a>
+                {{ end }}
+              </td>
+              <td><span class="go2keyword go2keyword-small">{{ .Lists }}</span></td>
+              <td><a role="button" class="btn btn-outline-secondary btn-sm" title="Edit link #{{ .ID }}" href="/_link_/{{ .ID }}?returnto={{ $.Keyword }}">edit</a></td>
+            </tr>
+          {{- end }}
+          </tbody>
+        </table>
+        {{- end }}
+
+              
+      </div>
+    </div>
+    {{/* {{ $thislist := .LinkDB.MyList .Keyword }} */}}
+    {{/* {{ $thislist := index .LinkDB.Lists .Keyword }}
+    {{ $similar := $thislist.GetSimilar .Keyword }}
+    {{ $count := len $similar}}
+    <div class="col-6">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="center">Similar Keywords</h4>
+          {{ if gt $count 0 }}
+          <p>Keywords with similar names might share the same meaning. If that is the case, consider adding your link to one of the following
+          existing keywords. Note that you can disambiguate similar-sounding keywords or plurals by making a new list and pointing it directly to the other existing keyword.</p>
+          {{ end }}
+        </div>
+        <table class="table table-striped">
+              {{ if gt $count 0 }}
+                {{ range $similar }}
+                <tr>
+                  <td>
+                    <a class="go2keyword go2keyword-small" title="This keyword was found to be similar!" href="/.{{ . }}">{{ . }}</a>
+                  </td>
+                </tr>
+                {{ end }}
+              {{ else }}
+                <tr>
+                  <td>
+                    <p style="text-align:center">No similar keywords were found.</p>
+                  </td>
+                </tr>
+              {{ end }}
+        </table>
+
+      </div>
+    </div> */}}
+</div> <!-- container-fluid -->
+
+{{ end }}

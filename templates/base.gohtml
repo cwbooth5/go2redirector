@@ -1,0 +1,307 @@
+{{ define "base" }}
+<!doctype html>
+<html lang="en">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    {{ template "title" . }}
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css" media="screen"/>
+    <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="theme-color" content="#ffffff">
+
+    <style type="text/css">
+
+    @font-face {
+        font-family: 'Muli';
+        src: url('/static/font/muli.woff2') format('woff2');
+        font-style: normal;
+        font-weight: 400;
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+
+    body {
+        background-color: #22252a;
+        color: #8a8d93;
+        font-family: 'Muli';
+        font-size: 1rem;
+        font-weight: 400;
+    }
+
+    #titletext {
+        /* color: #a5a7ab; */
+        /* color: #E95F71 !important; */
+        color: #fff;
+        font-size: 30px;
+    }
+
+    a {
+        color: #DB6574;
+        text-decoration: none;
+        transition: all 0.3s;
+    }
+
+    a:hover {
+        color: #2f93ea;
+        text-decoration: underline;
+    }
+
+    code {
+        color: #d09455;
+    }
+
+    .card {
+        background-color: #2d3035;
+        border: 1px solid #34373D;
+        border-radius: 0;
+    }
+
+    .card-header {
+        border-bottom: 1px solid #34373d;
+        background-color: rgba(0,0,0,0.03);
+    }
+
+    .text-nowrap {
+        white-space: nowrap;
+    }
+
+    .form-control {
+        display: block;
+        color: #979a9f;
+        background: transparent;
+        border: 1px solid #444951;
+        border-radius: 0;
+    }
+
+    .form-control:focus {
+        color: #979a9f;
+        border-color: #DB6574;
+        background-color: rgba(0,0,0,0);
+        outline: none;
+        box-shadow: none;
+    }
+
+    .form-control:disabled {
+        background: #e9ecef;
+    }
+
+    #go2outerform {
+        padding-left: 0px;
+        border: none;
+    }
+
+    #go2input {
+        color: #4dc5d9 !important;
+        background-color: transparent;
+        outline: none;
+        box-shadow: none;
+        line-height: 30px;
+        border: 1px solid #444951;
+        padding-left: 0px;
+        margin-left: 3px;
+        font-size: 25px;
+    }
+
+    .go2keyword {
+        color: #4dc5d9 !important;
+    }
+
+    .go2keyword-large {
+        outline: none;
+        box-shadow: none;
+        line-height: 30px;
+        border: none;
+        padding-left: 0px;
+        padding-top: 7px;
+        font-size: 30px;
+    }
+
+    .go2keyword-small {
+        font-size: inherit;
+    }
+
+    .table td {
+        border-color: #343a40;
+    }
+
+    .list-group-item {
+        background-color: transparent;
+        border: 0px;
+    }
+
+    #list-group-item-nopad {
+        padding-left: 0rem;
+        background-color: transparent;
+        border: 0px;
+        display: block;
+    }
+
+    .list-inline {
+        padding-left: 10px;
+    }
+
+    .member-list-item {
+        color: #7127AC !important;
+    }
+
+    .behavior-selector {
+        margin-bottom: 0px;
+    }
+
+    .input-group-text {
+        background-color: transparent;
+        border: none;
+        color: #fff;
+    }
+
+    .btn-primary {
+        background-color: #d09455;
+        border-color: #d09455;
+    }
+
+    .btn-primary:hover {
+        background-color: #55a4b1;
+        border-color: #55a4b1;
+    }
+
+    .btn-primary:not(:disabled):not(.disabled).active, .btn-primary:not(:disabled):not(.disabled):active, .show > .btn-primary.dropdown-toggle {
+        background-color: #d44658;
+        border-color: #d13c4f;
+    }
+
+    .btn-primary:not(:disabled):not(.disabled).active:focus, .btn-primary:not(:disabled):not(.disabled):active:focus, .show > .btn-primary.dropdown-toggle:focus {
+        box-shadow: 0 0 0 .2rem rgba(219,101,116,0.5);
+    }
+
+    .btn-primary.focus {
+        box-shadow: 0 0 0 .2rem rgba(219,101,116,0.5);
+    }
+
+    .btn-block-go2 {
+        border-radius: 0px;
+    }
+
+    .breadcrumb {
+        background-color: inherit;
+        padding-left: 0px;
+        padding-right: 0px;
+        padding-bottom: 0px;
+        padding-top: 10px;
+    }
+
+    .badge-go2 {
+        color: #fff;
+        background-color: #2e3944;
+    }
+
+    .table thead th {
+        border-bottom: 0px;
+        border-top: 0px;
+    }
+
+    .table {
+        color: #8a8d93;
+    }
+
+    .visually-hidden {
+        border: 0!important;
+        clip: rect(0 0 0 0)!important;
+        height: 1px!important;
+        margin: -1px!important;
+        overflow: hidden!important;
+        padding: 0!important;
+        position: absolute!important;
+        width: 1px!important;
+    }
+    </style>
+
+</head>
+<body>
+    <script>
+        window.addEventListener('load', function() {
+            focusinput();
+        })
+        function focusinput() {
+            var e = document.getElementById("go2input");
+            {{/* only focus on the input if it is present */}}
+            if (e != null) {
+                e.focus();
+            }
+        }
+    </script>
+    {{ $thislist := .GetMyList .Keyword }}
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-sm-8">
+                <div class="input-group">
+                    <div>
+                      <a href="/" title="Redirector home" id="titletext">{{ .RedirectorName }}/</a>
+                    </div>
+                    {{ if or .KeywordExists .Keyword }}<p class="go2keyword go2keyword-large">{{ .Keyword }}</p>{{ else }}<form id="go2outerform" class="form-control" action="/"><input id="go2input" aria-label="Large" aria-describedby="inputGroup-sizing-sm" type="text" name="keyword" size="12" value=""/></form>{{ end }}
+                  </div>
+            </div>
+
+
+        </div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+              <li class="breadcrumb-item"><a href="/" title="Redirector home">{{ .RedirectorName }}</a></li>
+              {{ if .Keyword }}
+                {{ if $thislist }}
+                    {{ if $.LinkBeingEdited }}
+                        {{ if eq 0 $.LinkBeingEdited.ID }}
+                            <li class="breadcrumb-item">{{ .Keyword }}</li>
+                        {{ else }}
+                            <li class="breadcrumb-item"><a href="/.{{ .Keyword }}">{{ .Keyword }}</a></li>
+                        {{ end }}
+                    {{ end }}
+                {{ end }}
+
+                {{/* we have to take care here not to check anything nil. This will render the tag at the end of the breadcrumb */}}
+                {{ if $thislist }}            
+                    {{/* This is a macro to see if the tag is set on this link */}}
+                    {{ range $id, $tag := $thislist.TagBindings }}
+                        {{ if $.LinkBeingEdited }}
+                            {{ if eq $id $.LinkBeingEdited.ID }}
+                                {{ if eq $tag "" }}
+                                <li class="breadcrumb-item active"><span class="font-italic">(untagged!)</span></li>
+                                {{ else }}
+                                <li class="breadcrumb-item active">{{ $tag }}</li>
+                                {{ end }}
+                            {{ end }}
+                        {{ end }}
+                    {{ end }}
+                {{ end }}
+              {{- end }}
+              
+              
+              {{/* <li class="breadcrumb-item active" aria-current="page">Link</li> */}}
+            </ol>
+          </nav>
+
+        {{ template "content" . }}
+    </div>
+
+
+
+    <div>
+    <h3>Diagnostics</h3>
+    Build: {{ $.IdentifyBuild }}<br>
+    Title: {{ .Title }}<br>
+    Keyword: {{ .Keyword }}<br>
+    KeywordExists: {{ .KeywordExists }}<br>
+    KeywordBeingEdited: {{ .KeywordBeingEdited }}<br>
+    LinkExists: {{ .LinkExists }}<br>
+    LinkBeingEdited: {{ .LinkBeingEdited }}<br>
+    Usage: {{ .GetUsage }}<br>
+    Overrides: {{ .Overrides }}<br>
+    KeywordParams: {{ .KeywordParams }}<br>
+    UsageLog: {{ .UsageLog }}<br>
+    ErrorMessage: {{ .ErrorMessage }}<br>
+    This List: {{ $thislist }}<br>
+    </div>
+
+
+</body>
+</html>
+{{- end }}

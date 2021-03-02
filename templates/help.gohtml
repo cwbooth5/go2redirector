@@ -1,0 +1,110 @@
+{{ define "title" }}<title>{{ .RedirectorName }}/{{ .Title }}</title>{{ end }}
+{{ define "content" }}
+
+{{ $randlink := .LinkDB.RandomLink }}
+
+<div class="row">
+    <div class="col-md-10 col-md-offset-1">
+        <div class="panel panel-default">
+            <div class="panel-body">
+                <table class="table">
+                    <tr class="topic">
+                        <td colspan="3">
+                            <h4 class="center">The <a href="/">{{ .RedirectorName }}/ redirector</a> is a mnemonic URL shortener and a link database.</h4>
+                        </td>
+                    </tr>
+                    <tr class="topic">
+                        <td><h4>Motivation</h4></td>
+                        <td>
+                            <p>Instead of having to publicize a long and winding URL like
+                                <code>{{ $randlink.URL }}</code>,
+                                
+                                
+                                you can simply create a go keyword like
+                                <a href="http://go/{{ index $randlink.Lists 0 }}"><code>go/{{ index $randlink.Lists 0 }}</code></a>
+                                
+                                that will automatically redirect straight to that webpage.</p>
+                            </td>
+                        </tr>
+                        <tr class="topic">
+                            
+                            <td>
+                                <h4>Plain Keywords</h4>
+                            </td>
+                            <td>
+                                
+                                <p>
+                                    
+                                    <code>go/<i>{{ index $randlink.Lists 0 }}</i></code> might redirect to a list of its links, a
+                                    specific link, or a random link, depending on how the keyword is configured.
+                                    By default, a plain keyword with only one link will redirect to that link.
+                                </p>
+                                
+                                <p><code>go/.<i>{{ index $randlink.Lists 0 }}</i></code> ("dot-keyword") will always go to the
+                                    index page for that keyword, where links can be added and removed, and the
+                                    redirect behavior of the keyword itself can be changed.</p>
+                                    
+                                    <p>Plain keywords can only have letters, numbers, dots, and dashes.  No other
+                                        characters are allowed in a plain keyword.</p>
+                                        
+                                    </td>
+                                </tr>
+                                
+                                <tr class="topic">
+                                    <td>
+                                        <h4>Searchable Keywords</h4>
+                                    </td>
+                                    <td>
+                                        
+                                        <p>Some keywords are effectively search queries; everything following
+                                            the keyword is injected into the URL.</p>
+                                            
+                                            <p>For example, <a href="http://go/ogle/ffiv"><code>go/ogle/ffiv</code></a> does a Google search for "ffiv".
+                                                
+                                                The link for this keyword has the URL <code>https://www.google.com/search?q={*}</code>.  The <code>{*}</code> is replaced with the search query, in this case "ffiv".
+                                            </p>
+                                            
+                                            <p>Searchable keywords end in a forward slash.
+                                                
+                                                If you try to add a plain keyword to a link with <code>{*}</code> in the URL,
+                                                the keyword will be converted to a searchable keyword by appending a slash.
+                                                
+                                                <p>The index page for searchable keywords is the same as for plain keywords, as
+                                                    long as the keyword ends with its slash.  For example, <a
+                                                    href="http://go/.ogle/"><code>go/.ogle/</code></a> goes to the index page for
+                                                    the <code>ogle/</code> searchable keyword.</p>
+                                                    
+                                                    <p>Replace whitespace in search queries with a plus symbol (+). For example, <code>go/ogle/F5+networks+rules</code>.</p>
+                                                    
+                                                </td>
+                                            </tr>
+                                            
+                                            <tr class="topic">
+                                                <td>
+                                                    <h4>Smart Keywords</h4>
+                                                </td>
+                                                
+                                                <td>
+                                                    <p>XXX: TODO</p>
+                                                    
+                                                    <p>A list of all searchable keywords and regexes is at <a href="/special"><code>go/special</code></a>.</p>
+                                                    
+                                                </td>
+                                            </tr>
+                                            <tr class="topic">
+                                                <td>
+                                                    <h4>Variables</h4>
+                                                </td>
+                                                <td>
+                                                    
+                                                    <p>All link URLs can have <code>{VARIABLES}</code> in them, which expand to a
+                                                        system-wide default which can be overridden per browser (via cookie). </p>
+                                                        
+                                                        <p><a href="/variables"><code>go/variables</code></a> allows you to
+                                                            add new variables and change the system values of existing ones.  The "Save
+                                                            Local Overrides" button will store a cookie in your browser with your local
+                                                            variable overrides.</p> </td> </tr>
+                                                            
+                                                            
+                                                            {{ end }}
+                                                            

@@ -1,0 +1,79 @@
+{{ define "title" }}<title>{{ .Title }}</title>{{ end }}
+<div class="container-fluid">
+    {{ define "content" }}
+    <div class="row">
+        <div class="col-6">
+            <div class="card">
+              <div class="card-header">
+                <h4 class="center">Keywords</h4>
+              </div>
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Keyword</th>
+                      <th>Title</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  {{ range .LinkDB.Links }}
+                    {{- if ne .ID 1 }}
+                      <tr>
+                        <td><a href="/.{{ index .Lists 0 }}" class="go2keyword go2keyword-small" title="{{ index .Lists 0 }}">{{ index .Lists 0 }}</a></td>
+                        {{/* specials will have substitutions in them, so do not render a URL with unsubstituted variables. */}}
+                        <td><a href="/.{{ index .Lists 0 }}"><span>{{ .Title }}</span></a></td>
+                        <td><a role="button" class="btn btn-outline-secondary btn-sm" title="Edit link #{{ .ID }}" href="/_link_/{{ .ID }}?returnto={{ index .Lists 0 }}">edit</a></td>
+                      </tr>
+                    {{- end }}
+                  {{- end }}
+                  </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="card">
+              <div class="card-header">
+                <h4 class="center">Recent Top Links</h4>
+              </div>
+              <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Title</th>
+                      <th>Lists</th>
+                      <th>{{/*this is empty so the edit button gets a header*/}}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  {{ range .LinkDB.TopLinks 5 }}
+                      {{ if ne .ID 1 }}
+                    <tr>
+                      <td><a href="{{ .URL }}"><span>{{ .Title }}</span></a></td>
+                      <td><span class="go2keyword go2keyword-small">{{ .Lists }}</span></td>
+                      <td><a role="button" class="btn btn-outline-secondary btn-sm" title="Edit link #{{ .ID }}" href="/_link_/{{ .ID }}?returnto={{ index .Lists 0 }}">edit</a></td>
+                    </tr>
+                  {{- end }}
+                  {{- end }}
+                  </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <h4>All Lists</h4>
+    <div>
+        {{ range .LinkDB.Lists }}
+        {{ $length := len .Links }}
+        {{ if gt $length 1 }}
+        <div class="row">
+          <a class="go2keyword go2keyword-small" href="/.{{ .Keyword }}" title="{{ .Clicks }} clicks" role="button">{{ $.RedirectorName }}/{{ .Keyword }} <span class="badge badge-go2">{{ $length }}</span></a>
+        </div>
+        {{ else }}
+        <div class="row">
+          <a class="go2keyword go2keyword-small" href="/.{{ .Keyword }}" title="{{ .Clicks }} clicks" role="button">{{ $.RedirectorName }}/{{ .Keyword }}</a>
+
+        </div>
+        {{ end }}
+
+        {{ end }}
+    </div>
+</div>
+{{ end }}

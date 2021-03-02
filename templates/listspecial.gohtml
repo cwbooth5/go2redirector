@@ -1,0 +1,158 @@
+{{ define "title" }}<title>go/{{ .Keyword }}</title>{{ end }}
+{{ define "content" }}
+
+<div class="container-fluid">
+  <div class="row">
+      <div class="col-6">
+        <div class="card">
+        {{ if not .KeywordExists }}
+        <h4 class="center">Special keyword does not exist: <span class="go2keyword go2keyword-large">{{ .Keyword }}</span></h4>
+          {{ $noError := eq .ErrorMessage "" }}
+          {{ if and .KeywordBeingEdited $noError }}
+
+
+
+            {{ if .CreateParamString }}
+              {{/* they provided some parameters we can pass along */}}
+              <a role="button" class="btn btn-primary btn-block-go2" title="Create new special keyword" href="/_link_/?returnto={{ .Keyword }}&{{ .CreateParamString }}">Create new special keyword and link</a>
+            {{- else }}
+              <a role="button" class="btn btn-primary btn-block-go2" title="Create new special keyword" href="/_link_/?returnto={{ .Keyword }}">Create new special keyword and link</a>
+            {{- end }}
+
+
+
+          {{ end }}
+
+        {{ else }}
+          {{ $linkdata := .LinkDB.GetAllLinks .Keyword }}
+          {{ range $linkdata }}
+          <a role="button" class="btn btn-primary btn-block-go2" title="Edit current link" href="/_link_/{{ .ID }}?returnto={{ $.Keyword }}">Edit Current Link</a>
+          {{- end }}
+          <table class="table">
+            {{/* no table header needed/wanted here */}}
+            <tbody>
+            {{ range $idx, $val := .MtimeSort $.Keyword }}
+              {{ $prettydelta := $.PrettyTime $val.Mtime }}
+              <tr>
+                <td><a title="Updated {{ $prettydelta }}">{{ if eq $idx 0 }}<span class="badge badge-go2">Freshest!</span>{{ else }}{{ $idx }}{{ end }}</a></td>
+                <td>
+                  <a title="{{ .URL }}" href="/.{{ index .Lists 0 }}"><span>{{ .Title }}</span></a>
+                  {{ $also := .AKA }}
+                  {{ range $also }}
+                  <a class="fineprint" title="{{ .URL }}" href="/_link_/{{ .ID }}?returnto={{ $.Keyword }}"><p class="font-italic">"{{ .Title }}"</p><br></a>
+                  {{- end }}
+                </td>
+                <td>
+                TODO usage string
+                </td>
+              </tr>
+            {{- end }}
+            </tbody>
+          </table>
+        {{- end }} 
+        </div>
+      </div>
+      <div class="col-6">
+        {{/* this div intentionally left blank, unless keyword logging is turned on */}}
+        {{ if .KeywordExists}}
+          {{ if .GetLogging .Keyword }}
+           <div class="card">
+              Recent Redirects
+              <ul class="list-group">
+                {{ range .UsageLog }}
+                <li class="list-group-item">{{ . }}</li>
+                {{- end }}
+            </div>
+          {{- end }}
+        {{- end }}
+      </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+
+{{/* 
+{{ $behavior := .GetBehavior }}
+
+<div class="row-fluid">
+  <div class="column span8">
+    <div class="panel panel-default">
+    {{ if .ErrorMessage }}
+    <div class="alert alert-danger" role="alert">
+      {{ .ErrorMessage }}
+    </div>
+    {{ end }}
+
+      <table class="table table-striped">
+        {{ $noError := eq .ErrorMessage "" }}
+        {{ if and .KeywordBeingEdited $noError }}
+        <tr>
+          <td colspan="3">
+            <h4 class="center">
+              {{ if .CreateParamString }}
+              <a class="center" href="/_link_/?returnto={{ .Keyword }}&{{ .CreateParamString }}">Add new special redirect</a>
+              {{ else }}
+              <a class="center" href="/_link_/?returnto={{ .Keyword }}">Add new special redirect</a>
+              {{ end }}
+            </h4>
+          </td>
+        </tr>
+        {{- end }}
+
+
+        {{ if not .KeywordExists }}
+      <div class="alert alert-info" role="alert">
+        <h4 class="center">Keyword was not found: <strong>{{ .Keyword }}</strong></h4>
+      </div>
+        {{- else }}
+
+        <!-- list rows start here -->
+        {{ $kwd := .Keyword }}  <!-- so we can access it in the range block -->
+        {{ $linkdata := .LinkDB.GetAllLinks .Keyword }}
+
+        {{ range $linkdata }}
+        <tr>
+          <td>
+            <b>
+              <a title="TODO" class="pull-left fineprint" style="width: 1em;">#{{ .ID }}</a>
+            </b>
+            <div class="container-fluid link" id="{{ .ID }}">
+              <div class="shallow">
+                <a title="{{ .URL }}">
+                  <div class="shallow example span4">
+                    &nbsp;
+                  </div>
+
+                  <div class="shallow span8">{{ .Title }}</div>
+                </a>
+              </div>
+              <div class="fineprint shallow meta text">
+
+                <a href="/.{{ $kwd }}" title="TODO"><b>{{ .Lists }} </b></a>
+              </div>
+
+            </div>
+          </td>
+          <td>
+            <div class="pull-right">
+              <a href="/_link_/{{ .ID }}?returnto={{ $kwd }}"><img border="0" src="/static/img/edititem32x32.png"></a>
+            </div>
+          </td>
+        </tr>
+        {{- end }}
+        <!-- list rows end here -->
+        {{ end }}
+
+      </table>
+
+    </div>
+
+  </div>
+</div> */}}
+{{ end }}

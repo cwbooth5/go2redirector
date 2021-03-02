@@ -1,0 +1,335 @@
+{{ define "title" }}<title>{{ .Title }}</title>{{ end }}
+{{ define "content" }}
+
+<script>
+window.addEventListener('load', function() {
+    addinputs();
+})
+</script>
+
+<!-- This code is intended to make it setting variables clearer. -->
+<script>
+  function addinputs() {
+    var x = document.getElementById("urlinput").value;
+    var container = document.getElementById("rowvar");
+    var regex = /\{([\d\w]+)\}+/g;  // matches {variable}, can work with alphanumeric
+    let matches = x.matchAll(regex);
+    document.getElementById("rowvar").innerHTML = "";  // remove all inputs
+    // This is an iterator, not an array
+    for(let result of matches) {
+
+      var varsfound = result;
+
+      if (document.getElementById(result[1])) {
+        continue
+      }
+      code = document.createElement("code");
+
+      var description = document.createTextNode(result[0]);
+      var input = document.createElement("input");
+      input.type = "text";
+      input.name = "urlvar~" + result[1]; //note our non-typical delimiter
+      //input.name = "urlvar";
+      input.id = result[1]; // name without braces
+      //input.required = true;
+      input.className = "form-control";
+
+      {{ if .LinkExists }}
+      // TODO: put code here which poplulates these fields with the defaults set previously in the db
+      {{ end }}
+
+      container.appendChild(code)
+      code.appendChild(description);
+      container.appendChild(input);
+      container.appendChild(document.createElement("br"));
+    }
+
+    if (!varsfound) {
+      container.innerHTML = "<p>(no variables used)</p>";
+    }
+  }
+</script>
+
+
+{{ $linkid := .LinkBeingEdited.ID }}
+{{ $isspecial := .IsSpecial }}
+
+<script type="text/javascript" src="/static/js/jquery.min.js"></script>
+<script type="text/javascript" src='/static/js/go.js'> </script>
+
+<script>
+  function confirmDelete() {
+    return confirm("Do you really want to delete this?")
+    // if(!confirm("Do you really want to delete this?")) {
+    // return false;
+    // }
+    // this.form.submit();
+  }
+</script>
+
+<div class="row">
+  <div class="col-6">
+  <div class="card">
+    <div class="card-header">
+ 
+      {{ if .LinkExists }}<h4>Edit Link Details</h4>{{ else }}<h4>Enter New Link Details</h4>{{ end }}
+      {{/* {{ .RedirectorName }}/{{ if ne .Keyword "" }}{{ .Keyword }}{{ else }}{{ index .LinkBeingEdited.Lists 0 }}{{ end }} */}}
+  
+    </div>
+    <div class="card-body">
+
+      <div class="inner">
+        <form action="/api/link/" method="POST">
+        {{/* This duplicated block of code here is only here for one hacky reason. Users hitting 'Enter' on any form field will trigger the top
+        submit button on the form visually. Putting it here and making it invisible makes Enter == "Submit new link". */}}
+        {{ if .LinkExists }}
+        <button class="visually-hidden" type="submit" title="Submit Changes" value="Submit Changes">Submit Changes</button>
+        {{ else }}
+        <button class="visually-hidden" type="submit" title="Submit New Link" value="Submit Link">Submit New Link</button>
+        {{ end }}
+        {{/* END of duplicated button code block */}}
+
+          <!-- This tells the server where to redirect after the form submission. -->
+          <input type="hidden" name="returnto" value="{{ .Keyword }}"/>
+          <input type="hidden" name="internal" value="true"/>
+          <input type="hidden" name="linkid" value="{{ $linkid }}"/>
+
+          <table class="table linkedit">
+            <tr>
+              <td>Title</td>
+              <td>
+                <input type="text" name="title" class="form-control" value="{{ if ne $linkid 0 }}{{ .LinkBeingEdited.Title }}{{ end }}" placeholder=""/>
+              </td>
+            </tr>
+
+            <tr>
+              <td>Tag</td>
+              <td>
+              {{ $thislist := .GetMyList .Keyword }}              
+              {{ if $thislist }}
+                {{ $thistag := $thislist.GetTag $linkid }}
+                <input type="text" name="tag" class="form-control" value="{{ $thistag }}" placeholder=""/>
+              {{ else }}
+                <input type="text" name="tag" class="form-control" value="" placeholder=""/>
+              {{ end }}
+              </td>
+            </tr>
+
+            {{/* <tr>
+              <td>Usage Example</td>
+              <td>
+
+                <div class="input-group input-group-sm">
+                  {{ if $isspecial }}
+                  <div class="input-group-prepend">
+
+                    <!-- TODO: This index is janky. Why don't we have access to just the keyword for special links? -->
+                    <!-- New specials will have the keyword available from the URL param "returnto". Existing lists will have one link and we just get that first one. -->
+                      <span class="input-group-text font-weight-bold" id="inputGroup-sizing-sm">{{ .RedirectorName }}/{{ if ne .Keyword "" }}{{ .Keyword }}{{ else }}{{ index .LinkBeingEdited.Lists 0 }}{{ end }}</span>
+                  </div>
+                  <input type="text" class="form-control concat-usage" disabled>
+                  <!-- <input type="text" name="usage" class="form-control" aria-label="Small" aria-describedby="inputGroup-sizing-sm" value="{{ .GetUsage }}"> -->
+                  {{ else }}
+                  <!-- <input type="text" class="form-control" aria-label="Small" aria-describedby="inputGroup-sizing-sm"> -->
+                  <input class="form-control" type="text" placeholder="{{ .RedirectorName }}/{{ if ne .Keyword "" }}{{ .Keyword }}{{ else }}{{ index .LinkBeingEdited.Lists 0 }}{{ end }}" readonly>
+                  {{ end }}
+                </div>
+
+              </td>
+            </tr> */}}
+
+            <tr>
+              <td>URL</td>
+              <td>
+
+                <textarea id="urlinput" name="url" rows="4" cols="50" placeholder="www.example.com" class="form-control" aria-describedby="urlHelpBlock" oninput="addinputs()" required>{{ if ne $linkid 0 }}{{ .LinkBeingEdited.URL }}{{ end }}</textarea>
+                <small id="urlHelpBlock" class="form-text text-muted">
+                  URLs can have {variables} within. Just enclose them in curly brackets "{}".
+                </small>
+              </td>
+            </tr>
+
+            <!-- dynamically-added client side form input fields for variables -->
+            <tr id="urlvars">
+              <td>Default Variables</td>
+              <td>
+                <div id="rowvar"><p>(no variables used)</p></div>
+                {{ $numvars := len .LinkBeingEdited.LinkVariables }}
+                {{/* only show the helper text containing defaults if link variables are set currently on this link */}}
+                {{ if gt $numvars 0 }}
+                  <small id="urlHelpBlock" class="form-text text-muted">current defaults -
+                  {{ range $pattern, $replacement := .LinkBeingEdited.LinkVariables }}
+                  { {{- $pattern -}} }:{{ $replacement}}
+                  {{- end }}
+                  </small>
+                {{- end }}
+
+              </td>
+            </tr>
+
+
+            {{ if $isspecial }}
+            <tr>
+              <td>
+                Keyword Usage Logging
+              </td>
+              <td>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="linklog" name="linklog" value="enable" {{ if .GetLogging .Keyword }} checked {{ end }}>
+                  <label class="form-check-label" for="linklog">
+                    Enable
+                  </label>
+                </div>
+              </td>
+            </tr>
+            {{ end }}
+            <tr>
+              <td>Link Expiration</td>
+              {{ if not .LinkExists }}
+              <td>
+                <select class="form-control" name="expiretime">
+                  <option value="99999h">never</option>
+                  <option value="burn">burn after reading(disabled for now)</option>
+                  <option value="10m">10 minutes</option>
+                  <option value="1h">1 hour</option>
+                  <option value="24h">24 hours</option>
+                  <option value="720h">1 month</option>
+                  <option value="4320h">6 months</option>
+                  <option value="8640h">1 year</option>
+                </select>
+              </td>
+              {{ else }}
+              <td><strong>{{ $.PrettyTime .LinkBeingEdited.Dtime }}</strong></td>
+              {{ end }}
+            </tr>
+            {{ if not $isspecial }}
+
+            <tr>
+              <td>Lists</td>
+                <td>
+                    {{ if not .LinkExists }}
+                    <a style="color: #4dc5d9 !important;" href="/.{{ .Keyword }}">{{ .Keyword }}</a><br>
+                    {{ end }}
+                    <!-- get all lists for a particular link -->
+                    {{ if .LinkExists }}
+                      {{ range .LinkBeingEdited.Lists }}
+                        {{ if ne $.Keyword . }}
+                        <a href="/.{{ . }}">{{ . }}</a><br>
+                          {{ else }}
+                        <a style="color: #4dc5d9 !important;" href="/.{{ . }}">{{ . }}</a>
+                        <br>
+                
+                    </div>
+                        {{ end }}
+                      {{ end }}
+                    {{ end }}
+                    <input class="form-control" type="text" name="otherlists" value="" placeholder="list2 list3" />
+              </td>
+            </tr>
+          {{ end }}
+
+          <tr>
+          <td>
+            <td>
+            <a role="button" class="btn btn-outline-secondary" title="Cancel and go back" href="/.{{ .Keyword }}">Cancel</a>
+              {{ if .LinkExists }}
+              <button class="btn btn-outline-secondary" type="submit" title="Remove link from this list only" value="true" name="delete">Unlink from <span style="color: #4dc5d9 !important;">{{ .Keyword }}</span></button>
+              <button class="btn btn-primary" type="submit" title="Submit Changes" value="Submit Changes">Submit Changes</button>
+              <!-- <button class="btn btn-danger btn-sm" type="submit" title="Remove link from this list" value="decouple" name="delete">Unlink From <b>{{ .Keyword }}</b></button> -->
+              {{ else }}
+              <button class="btn btn-primary" type="submit" title="Submit New Link" value="Submit Link">Submit New Link</button>
+              {{ end }}
+            </td>
+          </tr>
+        </table>
+      </form>
+    </div>
+    </div>
+  </div>
+
+  </div>
+  <!-- variables table -->
+  {{ $special := .LinkBeingEdited.Special }}
+  {{ $thelink := .LinkBeingEdited}}
+  <div class="col-6">
+    <div class="card">
+      <div class="card-header"><h4>Redirect Variables</h4></div>
+      <div class="card-body">
+        <p>URLs can have <code>{variables}</code> within. Any URL with a variable configured has a default setting which can be overridden per-browser.
+          The default setting gets used when you don't have a local override in place. 
+        </p>
+        <p>
+        Hello.
+        </p>
+        <div class="inner">
+          <form action="/_variables_/" method="POST">
+            <!-- This tells the server where to redirect after the form submission. -->
+            <input type="hidden" name="returnto" value="{{ .Keyword }}"/>
+            {{ if .LinkExists }}
+            <input type="hidden" name="linkid" value="{{ $linkid }}"/>
+            {{ end }}
+
+            <table class="table">
+              <tr>
+                <td>
+                  <h3>Override Variables</h3>
+                  {{ $numlinkvars := len .LinkBeingEdited.LinkVariables }}
+                  {{ if gt $numlinkvars 0 }}
+                  {{ range $pattern, $replacement := .LinkBeingEdited.LinkVariables }}
+                  <div class="form-group row">
+                    <label for="replacement" class="col-sm-2 col-form-label font-weight-bold text-nowrap"><code>{ {{- $pattern -}} }</code></label>
+                    <input type="hidden" class="form-control" name="pattern" value="{{ $pattern }}">
+                    <div class="col-sm-10">
+                    {{ $useroverride := index $.Overrides $pattern }}
+                    {{/* Show the user's cookie override value. If it isn't there, show the default. */}}
+                      <input type="text" class="form-control" name="replacement" id="replacement" value="{{ or $useroverride $replacement }}" placeholder="{{ or $useroverride $replacement }}">
+                    </div>
+                  </div>
+                  {{ end }}
+                  <div class="form-group row">
+                    <div class="col-sm-10 offset-sm-2">
+                      <button type="submit" class="btn btn-primary">Add Local Overrides</button>
+                    </div>
+                  </div>
+                  {{ else }}
+                  <p class="lead">No Overrides are set yet because this link contains no variables.</p>
+                  {{ end }}
+                </td>
+              </tr>
+
+              {{/* <tr>
+                <td>
+                  <div>
+                  We can show how your link will render here:<br>
+                  <samp>
+                    <p>{{ .LinkBeingEdited.GetURL }}</p>
+                  </samp>
+                  </div>
+                </td>
+              </tr> */}}
+              <tr>
+              {{ if ne .LinkBeingEdited.ID 0 }}
+              <td>
+              Link Created: {{ $.PrettyTime .LinkBeingEdited.Ctime }}<br>
+              Link Modified: {{ $.PrettyTime .LinkBeingEdited.Mtime }}
+              </td>
+              {{- end }}
+              </tr>
+            </table>
+          </form>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+
+</div>
+
+<!-- TODO edit data code goes here -->
+
+<!-- <script type="application/javascript" src="/js/go.js"></script> -->
+
+{{ end }}
