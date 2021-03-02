@@ -243,10 +243,7 @@ func routeSpecialListPage(w http.ResponseWriter, r *http.Request, keyword core.K
 func IndexPage(w http.ResponseWriter, r *http.Request) {
 	kwd := core.Keyword("")
 	var err error
-	// if err != nil {
-	// 	core.LogError.Println(err)
-	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
-	// }
+
 	// model passed into index is the entire DB for now
 	model := ModelIndex{
 		Title:              "The GO2 Redirector",
@@ -366,12 +363,6 @@ func RenderSpecial(r *http.Request, params []string, l *core.Link, ll *core.List
 
 	core.LogDebug.Printf("%v", l)
 
-	// break specials for now. We need to switch params to be positional and numbered starting at 1.
-	// params is currently coming in at len==1 and empty string.
-	// if len(params) >= 1 && params[0] != "" {
-	// 	return "", fmt.Errorf("specials broken for a bit")
-	// }
-
 	if len(l.Lists) > 1 {
 		// This is more or less an assertion of a condition that should never happen.
 		core.LogDebug.Println("Special was a member of more than 1 list!!")
@@ -467,7 +458,6 @@ func RenderListPage(r *http.Request) (string, ModelIndex, error) {
 		pth.Keyword, _ = core.MakeNewKeyword(k)
 	}
 
-	//log.Printf("list page hit for keyword '%s'\n", keyword)
 	for _, val := range core.LinkDataBase.Lists {
 		core.Similar(string(pth.Keyword), string(val.Keyword))
 	}

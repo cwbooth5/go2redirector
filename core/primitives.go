@@ -318,26 +318,12 @@ func (d *LinkDatabase) Import(filename string) {
 	if err != nil {
 		LogDebug.Fatal("DB file was not found! Run the install script to create one.")
 	}
-	// CHOPPING BLOCK: is this needed if we have an init db ready on disk?
-	// defaultdb := `{"NextLinkID": 1}`
-	// if err != nil {
-	// 	// If there was no file present, just initialize a new one with empty json.
-	// 	LogDebug.Printf("file import error, initializing new godb: %s", err)
-	// 	data = []byte(defaultdb)
-	// }
+
 	err = json.Unmarshal(data, &tempdb)
 	if err != nil {
 		LogError.Printf("json parsing error: %s", err)
 	}
 
-	// CHOPPING BLOCK: probably only needed importing from the old DB, if we support that
-	// If any existing links don't have a Dtime, set one at a value of 'never'.
-	// now := time.Now()
-	// for _, l := range tempdb.Links {
-	// 	if l.Dtime.Before(now) {
-	// 		l.Dtime = never
-	// 	}
-	// }
 	LinkDataBase = &tempdb
 }
 
@@ -410,12 +396,6 @@ func (d *LinkDatabase) Couple(ll *ListOfLinks, linkObj *Link) {
 		d.Lists[ll.Keyword] = ll // create the list of links
 	}
 
-	// if _, exists := ll.Links[linkObj.ID]; exists {
-	// 	LogDebug.Println("Link already exists in this list, updating...")
-	// 	ll.Links[linkObj.ID] = linkObj
-	// 	return
-	// }
-
 	// Update memberships in both the list and the link.
 	present := false
 	for _, kwd := range linkObj.Lists {
@@ -453,11 +433,7 @@ func (d *LinkDatabase) CommitNewLink(l *Link) (int, error) {
 
 /* Get a link object by ID or URL. */
 func (d *LinkDatabase) GetLink(id int, url string) *Link {
-	// cleaned, err := sanitary(url)
-	// if err != nil {
-	// 	log.Printf("We couldn't sanitize that URL! '%s'", url)
-	// 	LogError.Fatal(err)
-	// }
+
 	for _, lnk := range d.Links {
 		if lnk.ID == id || lnk.URL == url {
 			return lnk
