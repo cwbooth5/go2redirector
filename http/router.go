@@ -29,146 +29,146 @@ func RouteGetDB(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
-func routeCustomHandler(w http.ResponseWriter, r *http.Request) {
-	// We need a custom function here to handle all the interesting paths in our normal use cases.
+// func routeCustomHandler(w http.ResponseWriter, r *http.Request) {
+// 	// We need a custom function here to handle all the interesting paths in our normal use cases.
 
-	//log.Println("Handling request for path:", r.URL.Path)
-	// if the URL path does not start with an underscore, treat it as an attempted redirect.
+// 	//log.Println("Handling request for path:", r.URL.Path)
+// 	// if the URL path does not start with an underscore, treat it as an attempted redirect.
 
-	//TODO this might be a place where we just 404 them on garbage input.
+// 	//TODO this might be a place where we just 404 them on garbage input.
 
-	fmt.Println(core.FormatRequest(r))
+// 	fmt.Println(core.FormatRequest(r))
 
-	var genParam []string
-	if r.Method == http.MethodGet && !strings.HasPrefix(r.URL.Path, "/_") && r.URL.Path != "/" && !strings.HasPrefix(r.URL.Path, "/.") {
+// 	var genParam []string
+// 	if r.Method == http.MethodGet && !strings.HasPrefix(r.URL.Path, "/_") && r.URL.Path != "/" && !strings.HasPrefix(r.URL.Path, "/.") {
 
-		var safeKeyword core.Keyword
-		var err error
+// 		var safeKeyword core.Keyword
+// 		var err error
 
-		k := r.URL.EscapedPath() // Example result: /kwdname/param1/param2
-		// log.Printf("escaped path: %q", k)
-		m := strings.TrimPrefix(k, "/")
-		// log.Printf("keyword: %v", m)
-		p := strings.SplitAfterN(m, "/", 2) // ["kwdname/", "param1/param2"]
-		core.LogDebug.Printf("Incoming URL escaped path items: %q\n", p)
-		core.LogDebug.Printf("Cookies provided on this direct keyword: %s\n", r.Cookies())
+// 		k := r.URL.EscapedPath() // Example result: /kwdname/param1/param2
+// 		// log.Printf("escaped path: %q", k)
+// 		m := strings.TrimPrefix(k, "/")
+// 		// log.Printf("keyword: %v", m)
+// 		p := strings.SplitAfterN(m, "/", 2) // ["kwdname/", "param1/param2"]
+// 		core.LogDebug.Printf("Incoming URL escaped path items: %q\n", p)
+// 		core.LogDebug.Printf("Cookies provided on this direct keyword: %s\n", r.Cookies())
 
-		// this used to go looking for the slash on the end. Now we look at all terms.
-		// zero terms provided: they get the index page (shouldn't ever get to this function)
-		// one term provided: they entered a keyword. look it up, redirect or create if needed
-		// two or more terms: treat the first as the keyword, all the rest as the dynamic variables in left-to-right order across the URL
+// 		// this used to go looking for the slash on the end. Now we look at all terms.
+// 		// zero terms provided: they get the index page (shouldn't ever get to this function)
+// 		// one term provided: they entered a keyword. look it up, redirect or create if needed
+// 		// two or more terms: treat the first as the keyword, all the rest as the dynamic variables in left-to-right order across the URL
 
-		// If the keyword has a trailing slash, treat it as a special keyword.
-		// TODO: How do we want the user experience to be?
-		// A. We show them exactly what they typed in the address bar the entire time, no redirecting with URL params. -OR-
-		// B. We redirect here to the keyword handler. http://go2.local/?keyword=kwdname%2Fparam1%2Fparam2
-		if strings.HasSuffix(p[0], "/") { // this is a dynamic/special keyword
-			// If they entered a bare "kwdname/" and no params
-			if len(p) > 1 { // they provided one or more params
-				genParam = strings.Split(p[1], "/")
-			}
+// 		// If the keyword has a trailing slash, treat it as a special keyword.
+// 		// TODO: How do we want the user experience to be?
+// 		// A. We show them exactly what they typed in the address bar the entire time, no redirecting with URL params. -OR-
+// 		// B. We redirect here to the keyword handler. http://go2.local/?keyword=kwdname%2Fparam1%2Fparam2
+// 		if strings.HasSuffix(p[0], "/") { // this is a dynamic/special keyword
+// 			// If they entered a bare "kwdname/" and no params
+// 			if len(p) > 1 { // they provided one or more params
+// 				genParam = strings.Split(p[1], "/")
+// 			}
 
-			if p[1] == "" { //TODO there has to be a better way to do this..
-				core.LogDebug.Printf("Dynamic redirect was requested, but no parameters were supplied, showing usage page...\n")
-				http.Redirect(w, r, fmt.Sprintf("/.%s", p[0]), 302)
-				return
-			}
+// 			if p[1] == "" { //TODO there has to be a better way to do this..
+// 				core.LogDebug.Printf("Dynamic redirect was requested, but no parameters were supplied, showing usage page...\n")
+// 				http.Redirect(w, r, fmt.Sprintf("/.%s", p[0]), 302)
+// 				return
+// 			}
 
-			safeKeyword, _ := core.MakeNewKeyword(p[0]) //TODO, err handling
-			core.LogDebug.Printf("Special redirect requested. Keyword: '%s', Parameters: %s", p[0], genParam)
-			HandleSpecial(w, r, safeKeyword, genParam)
-			return
-		}
+// 			safeKeyword, _ := core.MakeNewKeyword(p[0]) //TODO, err handling
+// 			core.LogDebug.Printf("Special redirect requested. Keyword: '%s', Parameters: %s", p[0], genParam)
+// 			HandleSpecial(w, r, safeKeyword, genParam)
+// 			return
+// 		}
 
-		// look to see if we have a keyword for this.
-		safeKeyword, _ = core.MakeNewKeyword(p[0])
+// 		// look to see if we have a keyword for this.
+// 		safeKeyword, _ = core.MakeNewKeyword(p[0])
 
-		// If the keyword exists. follow the redirect behavior
-		// otherwise, go to the dot page for the keyword
-		if ll, exists := core.LinkDataBase.Lists[safeKeyword]; exists {
-			ultimateURL := ll.GetRedirectURL()
-			core.LogDebug.Printf("URL on keyword '%s' is '%s'\n", ll.Keyword, ultimateURL)
-			// Links in regular lists can have variables.
-			l := core.LinkDataBase.GetLink(-1, ultimateURL)
-			if strings.ContainsAny(l.URL, "{}") {
-				ultimateURL, _, err = RenderSpecial(r, []string{}, l, ll)
-				if err != nil {
-					// They didn't supply enough parameters.
-					core.LogError.Println(err)
-					routeSpecialListPage(w, r, safeKeyword, genParam, err.Error())
-					return
-				}
-			}
+// 		// If the keyword exists. follow the redirect behavior
+// 		// otherwise, go to the dot page for the keyword
+// 		if ll, exists := core.LinkDataBase.Lists[safeKeyword]; exists {
+// 			ultimateURL := ll.GetRedirectURL()
+// 			core.LogDebug.Printf("URL on keyword '%s' is '%s'\n", ll.Keyword, ultimateURL)
+// 			// Links in regular lists can have variables.
+// 			l := core.LinkDataBase.GetLink(-1, ultimateURL)
+// 			if strings.ContainsAny(l.URL, "{}") {
+// 				ultimateURL, _, err = RenderSpecial(r, []string{}, l, ll)
+// 				if err != nil {
+// 					// They didn't supply enough parameters.
+// 					core.LogError.Println(err)
+// 					routeSpecialListPage(w, r, safeKeyword, genParam, err.Error())
+// 					return
+// 				}
+// 			}
 
-			// A link can potentially have a 'burn after reading' Dtime. (the nil value of time.Time)
-			// If it does, we are going to blow away the link in the database now.
-			// They're still getting redirected below since we have the URL.
-			if l.Dtime.Equal(core.BurnTime) {
-				core.LogDebug.Printf("Burning link and redirecting user to: %s\n", ultimateURL)
-				core.DestroyLink(l)
-			} else {
-				// Update Atime and register a 'click' on this specific keyword.
-				l.Atime = time.Now().UTC()
-				ll.Clicks++
-				core.LogDebug.Printf("Redirecting user to: %s\n", ultimateURL)
-			}
+// 			// A link can potentially have a 'burn after reading' Dtime. (the nil value of time.Time)
+// 			// If it does, we are going to blow away the link in the database now.
+// 			// They're still getting redirected below since we have the URL.
+// 			if l.Dtime.Equal(core.BurnTime) {
+// 				core.LogDebug.Printf("Burning link and redirecting user to: %s\n", ultimateURL)
+// 				core.DestroyLink(l)
+// 			} else {
+// 				// Update Atime and register a 'click' on this specific keyword.
+// 				l.Atime = time.Now().UTC()
+// 				ll.Clicks++
+// 				core.LogDebug.Printf("Redirecting user to: %s\n", ultimateURL)
+// 			}
 
-			// This unimportant set of lines is the central purpose of
-			// this entire program - the redirect to their URL.
-			http.Redirect(w, r, ultimateURL, 307)
-			return
-		}
-		// Go to the list/dot page.
-		listPage(w, r, safeKeyword)
-		return
+// 			// This unimportant set of lines is the central purpose of
+// 			// this entire program - the redirect to their URL.
+// 			http.Redirect(w, r, ultimateURL, 307)
+// 			return
+// 		}
+// 		// Go to the list/dot page.
+// 		listPage(w, r, safeKeyword)
+// 		return
 
-	} else if strings.HasPrefix(r.URL.Path, "/.") {
-		// use case: They went straight to the dotpage in the address bar.
-		kwdStr := strings.TrimPrefix(r.URL.Path, "/.") //lower this?
-		safeKeyword, _ := core.MakeNewKeyword(kwdStr)
-		listPage(w, r, safeKeyword)
-		return
+// 	} else if strings.HasPrefix(r.URL.Path, "/.") {
+// 		// use case: They went straight to the dotpage in the address bar.
+// 		kwdStr := strings.TrimPrefix(r.URL.Path, "/.") //lower this?
+// 		safeKeyword, _ := core.MakeNewKeyword(kwdStr)
+// 		listPage(w, r, safeKeyword)
+// 		return
 
-	} else if strings.HasPrefix(r.URL.Query().Get("keyword"), ".") {
-		// Use case: They asked for a keyword with a leading dot (entered on index page form).
-		s := fmt.Sprintf("%s/%s", core.ListenURL(), r.URL.Query().Get("keyword"))
-		http.Redirect(w, r, s, 302)
-		return
+// 	} else if strings.HasPrefix(r.URL.Query().Get("keyword"), ".") {
+// 		// Use case: They asked for a keyword with a leading dot (entered on index page form).
+// 		s := fmt.Sprintf("%s/%s", core.ListenURL(), r.URL.Query().Get("keyword"))
+// 		http.Redirect(w, r, s, 302)
+// 		return
 
-	} else if r.URL.Query().Get("keyword") != "" {
-		// path == "/anything?keyword=thing"
-		// two paths:
-		// 1. it was a regular keyword, no arguments
-		// 2. it was a special keyword with N arguments separated by slashes
-		keyword := r.URL.Query().Get("keyword")
+// 	} else if r.URL.Query().Get("keyword") != "" {
+// 		// path == "/anything?keyword=thing"
+// 		// two paths:
+// 		// 1. it was a regular keyword, no arguments
+// 		// 2. it was a special keyword with N arguments separated by slashes
+// 		keyword := r.URL.Query().Get("keyword")
 
-		// TODO: this is duplicated logic from above. needs a function
-		m := strings.TrimPrefix(keyword, "/")
-		p := strings.SplitAfterN(m, "/", 2) // ["kwdname/", "param1/param2"]
-		core.LogDebug.Printf("Incoming URL escaped path items: %q\n", p)
+// 		// TODO: this is duplicated logic from above. needs a function
+// 		m := strings.TrimPrefix(keyword, "/")
+// 		p := strings.SplitAfterN(m, "/", 2) // ["kwdname/", "param1/param2"]
+// 		core.LogDebug.Printf("Incoming URL escaped path items: %q\n", p)
 
-		// These are things they typed in the go2/[] box at the top of the page.
-		if strings.Contains(p[0], "/") {
-			if len(p) > 1 {
-				genParam = strings.Split(p[1], "/")
-			}
-			safeKeyword, _ := core.MakeNewKeyword(p[0])
-			HandleSpecial(w, r, safeKeyword, genParam)
-			return
-		}
+// 		// These are things they typed in the go2/[] box at the top of the page.
+// 		if strings.Contains(p[0], "/") {
+// 			if len(p) > 1 {
+// 				genParam = strings.Split(p[1], "/")
+// 			}
+// 			safeKeyword, _ := core.MakeNewKeyword(p[0])
+// 			HandleSpecial(w, r, safeKeyword, genParam)
+// 			return
+// 		}
 
-		safeKeyword, _ := core.MakeNewKeyword(keyword)
-		listPage(w, r, safeKeyword)
-		return
-	} else if r.URL.Path == "/" {
-		IndexPage(w, r)
-		return
-	} else {
-		// log.Printf("No handler found for this URL! %s\n", r.URL)
-		// log.Printf(FormatRequest(r))
-		RouteNotFound(w, r)
-	}
-}
+// 		safeKeyword, _ := core.MakeNewKeyword(keyword)
+// 		listPage(w, r, safeKeyword)
+// 		return
+// 	} else if r.URL.Path == "/" {
+// 		IndexPage(w, r)
+// 		return
+// 	} else {
+// 		// log.Printf("No handler found for this URL! %s\n", r.URL)
+// 		// log.Printf(FormatRequest(r))
+// 		RouteNotFound(w, r)
+// 	}
+// }
 
 func RouteLink(w http.ResponseWriter, r *http.Request) {
 	// GET requests will have the editlink template returned.
@@ -305,170 +305,6 @@ func RouteLink(w http.ResponseWriter, r *http.Request) {
 			core.LogError.Println(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-	case http.MethodPost:
-		// Create a new link, using form data coming back from the editlink template.
-		returnto := r.PostFormValue("returnto")
-		keyword := core.Keyword(returnto)
-		// if err != nil {
-		// 	// User needs to know why their keyword was bad.
-		// 	http.Error(w, err.Error(), http.StatusBadRequest)
-		// }
-
-		// If the link ID here is 0, they're adding a new link.
-		// If it's > 0, they are editing an existing link.
-		lid := core.NewLinkID(r.PostFormValue("linkid"))
-		url := r.PostFormValue("url")
-		// This protects against them not entering anything for the URL.
-		// if err != nil {
-		// 	// TODO: signal better errors to the end user about their URLs
-		// 	log.Println(err.Error())
-		// 	http.Error(w, err.Error(), http.StatusBadRequest)
-		// 	return
-		// } else if url == "http://" {
-		// 	http.Error(w, "url cannot be empty", http.StatusBadRequest)
-		// 	return
-		// }
-
-		// TODO: validate user input here
-		title := r.PostFormValue("title")
-		// At this point, we need to check if they are attempting to add a link which already exists.
-
-		var workingLink *core.Link
-		if lid == 0 {
-			// This is adding a brand new link, as identified by incoming link ID 0.
-			core.LogDebug.Println("this is a new link being created")
-			// Create the new link object now.
-			workingLink, err = core.MakeNewlink(url, title)
-			if err != nil {
-				core.LogError.Printf("error creating a new link! %s\n", err)
-				RouteNotFound(w, r)
-			}
-
-			// New links being created have an expire date set.
-			// Existing links cannot have this value edited, so it only exists here.
-			delta := r.PostFormValue("expiretime")
-			var exptime time.Time
-			if delta == "burn" {
-				// special case: burn after reading
-				// We set the date to time.Time nil value to encode this.
-				// Link pruning code should not remove this special case, even though it's well in the past.
-				exptime = core.BurnTime
-			} else {
-				exptime, err = core.GetExpireTime(workingLink.Ctime, delta)
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusBadRequest) // this would only fail if the template has bad values
-				}
-			}
-
-			workingLink.Dtime = exptime
-			core.LogDebug.Printf("New link expire time set to: %s\n", exptime)
-
-			// modify link ID to a unique value on successful DB commit.
-			lid, err = core.LinkDataBase.CommitNewLink(workingLink)
-			if err != nil {
-				core.LogError.Printf("Problem commiting link! %d\n", lid)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				// routeNotFound(w, r)
-			}
-
-			//lnk, _ := newLink(core.LinkDataBase, url, title, keyword)
-			// errMsg := fmt.Sprintf("we already have a link for %s", url)
-			// http.Error(w, errMsg, http.StatusNotModified)
-		} else {
-			// this is an edit to an existing link.
-			workingLink = core.LinkDataBase.Links[lid]
-			core.LogDebug.Printf("Incoming POST is modifying an existing link: %v", workingLink)
-			core.LogDebug.Printf("URL for comparison: '%s'\n", url)
-			workingLink.Mtime = time.Now().UTC()
-			if workingLink.URL != url {
-				workingLink.URL = url
-			}
-			if workingLink.Title != title {
-				workingLink.Title = title
-			}
-			// In the case they were just editing the link with no keyword to return to:
-			if returnto == "" {
-				IndexPage(w, r)
-				return
-			}
-		}
-
-		// All links can have variables. If one is used in a URL, mark it special.
-		if strings.ContainsAny(workingLink.URL, "{}") {
-			core.LogDebug.Println("Link is being marked special due to the presence of substitutions in the URL.")
-			// workingLink.Special = true
-		}
-
-		// Any URL can have variables/substitutions.
-		// Both new links and links being edited get all variables overwritten.
-		r.ParseForm()
-		formVariableValues := make(map[string]string)
-		for k := range r.Form {
-			if strings.HasPrefix(k, "urlvar~") {
-				name := strings.TrimPrefix(k, "urlvar~")
-				formVariableValues[name] = r.FormValue(k)
-			}
-		}
-		workingLink.LinkVariables = formVariableValues // They're all overwritten. Users can always change these defaults.
-
-		// this is the otherlists functionality
-		if ll, exists := core.LinkDataBase.Lists[keyword]; exists {
-			core.LogDebug.Printf("Link ID %d is being appended to existing keyword '%s'", workingLink.ID, keyword)
-			core.LinkDataBase.Couple(ll, workingLink) // This will check for link IDs being re-added to lists and update them.
-
-		} else {
-			// Create a new list of links containing the new link and associate it with this keyword.
-			core.LogDebug.Printf("Link ID %d is being appended to new keyword '%s'", workingLink.ID, keyword)
-			ll := core.MakeNewList(keyword, workingLink)
-			// If it's a special/ keyword, mark the link special.
-			workingLink.Special = keyword.IsSpecial()
-			core.LinkDataBase.Couple(ll, workingLink)
-		}
-
-		// User-input list memberships, this is link-specific code
-		var allMemberships = core.LinkDataBase.Links[lid].Lists
-
-		for _, kw := range strings.Fields(r.PostFormValue("otherlists")) {
-			kwd := core.Keyword(kw)
-			if ll, exists := core.LinkDataBase.Lists[kwd]; exists {
-				core.LinkDataBase.Couple(ll, workingLink)
-				allMemberships = append(allMemberships, kwd)
-				core.LogDebug.Printf("Coupling link to otherlist '%s'", kwd)
-			}
-		}
-
-		// for _, kw := range strings.Fields(r.PostFormValue("lists")) {
-		// 	kwd, _ := NewKeyword(kw)
-		// 	if ll, exists := core.LinkDataBase.Lists[kwd]; exists {
-		// 		core.LinkDataBase.Couple(ll, workingLink)
-		// 		allMemberships = append(allMemberships, kwd)
-		// 		core.LogDebug.Printf("Coupling link to keyword '%s'", kwd)
-		// 	}
-		// }
-
-		// stomp on all memberships with the user-provided data.
-		core.LinkDataBase.Links[lid].Lists = allMemberships
-
-		// Update the usage string for this list of links
-		lol, _ := core.LinkDataBase.Lists[keyword]
-		lol.Usage = r.PostFormValue("usage")
-		core.LogDebug.Printf("USAGE STRING: %v\n", lol)
-
-		// Set the user's logging setting for this list of links/keyword.
-		if logging := r.PostFormValue("linklog") == "enable"; logging {
-			lol.ModifyLogging(true)
-		} else {
-			lol.ModifyLogging(false)
-		}
-
-		// Finally, redirect them to their created list.
-		s := fmt.Sprintf("%s/.%s", core.ListenURL(), returnto)
-		core.LogDebug.Printf("LISTEN URL REDIRECT: '%s'", s)
-		http.Redirect(w, r, s, 302)
-
-	case http.MethodDelete:
-		// Remove a link from a list/keyword.
-		// When the link has no other references, it is deleted from the database entirely.
 
 	default:
 		http.Error(w, "not allowed", http.StatusMethodNotAllowed)
@@ -571,55 +407,55 @@ func IndexPage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func listPage(w http.ResponseWriter, r *http.Request, keyword core.Keyword) {
-	var model ModelIndex
-	var kwdExists = false
-	var err error
+// func listPage(w http.ResponseWriter, r *http.Request, keyword core.Keyword) {
+// 	var model ModelIndex
+// 	var kwdExists = false
+// 	var err error
 
-	// modify clicks and atime (do this on special too)
+// 	// modify clicks and atime (do this on special too)
 
-	//log.Printf("list page hit for keyword '%s'\n", keyword)
-	for _, val := range core.LinkDataBase.Lists {
-		core.Similar(string(keyword), string(val.Keyword))
-	}
-	// check to see if this keyword exists.
-	// model changes based on existence of a keyword input from the form
-	if k, exists := core.LinkDataBase.Lists[keyword]; exists {
-		kwdExists = true
-		// keyword is going to get a click, plus an Atime update
-		k.Clicks++
-	}
+// 	//log.Printf("list page hit for keyword '%s'\n", keyword)
+// 	for _, val := range core.LinkDataBase.Lists {
+// 		core.Similar(string(keyword), string(val.Keyword))
+// 	}
+// 	// check to see if this keyword exists.
+// 	// model changes based on existence of a keyword input from the form
+// 	if k, exists := core.LinkDataBase.Lists[keyword]; exists {
+// 		kwdExists = true
+// 		// keyword is going to get a click, plus an Atime update
+// 		k.Clicks++
+// 	}
 
-	var bEdited = true
+// 	var bEdited = true
 
-	// What if the keyword they are entering is similar?
-	// What if any links in their list are functionally identical to what others added?
+// 	// What if the keyword they are entering is similar?
+// 	// What if any links in their list are functionally identical to what others added?
 
-	model = ModelIndex{
-		Title:              "list page",
-		LinkDB:             *core.LinkDataBase,
-		Keyword:            keyword,
-		KeywordExists:      kwdExists,
-		KeywordBeingEdited: bEdited,
-		LinkExists:         false,
-		LinkBeingEdited:    core.LinkZero,
-		RedirectorName:     core.RedirectorName,
-		ErrorMessage:       "",
-	}
+// 	model = ModelIndex{
+// 		Title:              "list page",
+// 		LinkDB:             *core.LinkDataBase,
+// 		Keyword:            keyword,
+// 		KeywordExists:      kwdExists,
+// 		KeywordBeingEdited: bEdited,
+// 		LinkExists:         false,
+// 		LinkBeingEdited:    core.LinkZero,
+// 		RedirectorName:     core.RedirectorName,
+// 		ErrorMessage:       "",
+// 	}
 
-	// regular lists go to list, special goes to the special page
-	if keyword.IsSpecial() {
-		model.KeywordBeingEdited = false // abusing this to get another boolean in the template
-		model.UsageLog = core.LinkLog[keyword]
-		err = RenderTemplate(w, "listspecial.gohtml", &model)
-	} else {
-		err = RenderTemplate(w, "list.gohtml", &model)
-	}
-	if err != nil {
-		core.LogError.Println(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
+// 	// regular lists go to list, special goes to the special page
+// 	if keyword.IsSpecial() {
+// 		model.KeywordBeingEdited = false // abusing this to get another boolean in the template
+// 		model.UsageLog = core.LinkLog[keyword]
+// 		err = RenderTemplate(w, "listspecial.gohtml", &model)
+// 	} else {
+// 		err = RenderTemplate(w, "list.gohtml", &model)
+// 	}
+// 	if err != nil {
+// 		core.LogError.Println(err)
+// 		http.Error(w, err.Error(), http.StatusInternalServerError)
+// 	}
+// }
 
 // encapsulate the logic for calculating a special redirect and performing that redirect
 func HandleSpecial(w http.ResponseWriter, r *http.Request, keyword core.Keyword, params []string) {
