@@ -10,6 +10,9 @@
     <meta name="msapplication-TileColor" content="#da532c">
     <meta name="theme-color" content="#ffffff">
 
+    <!-- easiest way to not have a favicon -->
+    <link rel="icon" href="data:,">
+
     <style type="text/css">
 
     @font-face {
@@ -258,7 +261,7 @@
                 {{ end }}
 
                 {{/* we have to take care here not to check anything nil. This will render the tag at the end of the breadcrumb */}}
-                {{ if $thislist }}            
+                {{ if $thislist }}
                     {{/* This is a macro to see if the tag is set on this link */}}
                     {{ range $id, $tag := $thislist.TagBindings }}
                         {{ if $.LinkBeingEdited }}
@@ -273,8 +276,8 @@
                     {{ end }}
                 {{ end }}
               {{- end }}
-              
-              
+
+
               {{/* <li class="breadcrumb-item active" aria-current="page">Link</li> */}}
             </ol>
           </nav>
