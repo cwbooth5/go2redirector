@@ -222,6 +222,10 @@
         font-weight: 400;
     }
 
+    .diag {
+        color: #22252a;
+    }
+
     .visually-hidden {
         border: 0!important;
         clip: rect(0 0 0 0)!important;
@@ -304,7 +308,7 @@
 
 
     <div>
-    <h3>Diagnostics</h3>
+    <span class="diag">
     Build: {{ $.IdentifyBuild }}<br>
     Title: {{ .Title }}<br>
     Keyword: {{ .Keyword }}<br>
@@ -318,6 +322,7 @@
     UsageLog: {{ .UsageLog }}<br>
     ErrorMessage: {{ .ErrorMessage }}<br>
     This List: {{ $thislist }}<br>
+    </span>
     </div>
 
 
