@@ -443,15 +443,34 @@ func (d *LinkDatabase) GetLink(id int, url string) *Link {
 	return LinkZero
 }
 
-// TODO: change this to actually return the 'top' links (by whatever metric I decide)
-func (d *LinkDatabase) TopLinks(count int) map[int]*Link {
-	linkPile := make(map[int]*Link)
-	iteration := 0
-	for id, link := range d.Links {
-		if iteration < count {
-			linkPile[id] = link
-			iteration++
-		}
+// Sort by access time (Atime)
+func (d *LinkDatabase) LinksByAtime(count int) []*Link {
+	linkPile := []*Link{}
+	for _, link := range d.Links {
+		linkPile = append(linkPile, link)
 	}
-	return linkPile
+	sort.Sort(ByAtime(linkPile))
+	return linkPile[:count]
+}
+
+// Sort by modification time (Mtime)
+func (d *LinkDatabase) LinksByMtime(count int) []*Link {
+	linkPile := []*Link{}
+	for _, link := range d.Links {
+		linkPile = append(linkPile, link)
+	}
+	sort.Sort(ByMtime(linkPile))
+	return linkPile[:count]
+}
+
+func (d *LinkDatabase) TopLists(count int) []*ListOfLinks {
+	listPile := []*ListOfLinks{}
+	for _, list := range d.Lists {
+		listPile = append(listPile, list)
+	}
+	sort.Sort(ByClicks(listPile))
+	if count < 0 {
+		return listPile
+	}
+	return listPile[:count]
 }
