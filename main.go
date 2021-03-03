@@ -90,17 +90,23 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 		if len(inputSplit) > 1 {
 			pth.Tag = inputSplit[1]
 		}
+		if len(inputSplit) > 2 {
+			pth.Params = append(pth.Params, inputSplit[2])
+		}
 	}
-	core.LogDebug.Printf("parsed path in handle keyword: %s\n", pth.Keyword)
+	core.LogDebug.Printf("parsed path Keyword: %s\n", pth.Keyword)
+	core.LogDebug.Printf("parsed path Tag: %s\n", pth.Tag)
+	core.LogDebug.Printf("parsed path Params: %s\n", pth.Params)
 	ll, exists := core.LinkDataBase.Lists[pth.Keyword]
 	if !exists {
 		core.LogDebug.Printf("keyword '%s' does not exist.\n", pth.Keyword)
 		tmpl, model, err = gohttp.RenderListPage(r)
 		return tmpl, model, redirect, err
 	} else { //deboog
-		fmt.Println("keyword found, proceeding to follow path...")
+		core.LogDebug.Println("keyword found, proceeding to follow path...")
 		core.PrintList(*ll)
 	}
+	core.LogDebug.Printf("parsed path length: %d\n", pth.Len())
 
 	switch {
 	case pth.Len() == 1:
@@ -142,6 +148,19 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 		//    if any {variable} is present in the url, treat this second value as a _parameter_
 		//    if the sub is not present, treat this value as a _tag_ identifying a link in the list.
 
+		// Check for the use case of "existing keyword but missing tag"
+		var tagfound bool
+		for _, tag := range ll.TagBindings {
+			if pth.Tag == tag {
+				tagfound = true
+			}
+		}
+		if !tagfound {
+			core.LogDebug.Printf("Tag '%s' was not found under keyword '%s'.\n", pth.Tag, pth.Keyword)
+			tmpl, model, err = gohttp.RenderListPage(r)
+			return tmpl, model, redirect, err
+		}
+
 		url := ll.GetRedirectURL()
 		if strings.ContainsAny(url, "{}") {
 			// pth.Tag is being treated as a substitution parameter/variable
@@ -163,7 +182,7 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 			}
 		} else {
 			// pth.Tag is being treated as a tag to look up a link in this list.
-			core.LogDebug.Println("resolved redirectURL contains no variables.")
+			core.LogDebug.Printf("resolved redirectURL contains no variables. %s\n", url)
 			// search for the tag in this list. If it is there, redirect to that link. If not, edit list page is rendered
 			for id, tag := range ll.TagBindings {
 				if pth.Tag == tag {
