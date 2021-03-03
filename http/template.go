@@ -41,7 +41,6 @@ type ModelIndex struct {
 func (m *ModelIndex) GetBehavior() string {
 	// If the keyword does not exist, this is the default.
 	if !m.KeywordExists {
-		core.LogDebug.Println("Keyword doesn't exist, so we are using the default behavior: RedirectToFreshest.")
 		return strconv.Itoa(core.RedirectToFreshest)
 	}
 	// TODO: read mutex

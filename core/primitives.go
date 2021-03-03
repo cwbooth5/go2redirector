@@ -141,13 +141,12 @@ func MakeNewKeyword(kwd string) (Keyword, error) {
 
 	// then check for valid characters for a URL string
 	for idx, l := range escaped {
-		// fmt.Printf("%#U starts at byte position %d\n", l, idx)
 		if unicode.IsLetter(l) || unicode.IsDigit(l) || strings.ContainsAny(string(l), "-_ ~") {
 			continue
 		} else {
 			msg := "valid characters are ALPHA, DIGIT, or any of -_ ~"
-			fmt.Printf("Bad character at position %d: '%s'\n", idx, string(l))
-			fmt.Printf(msg)
+			LogDebug.Printf("Bad character at position %d: '%s'\n", idx, string(l))
+			LogDebug.Printf(msg)
 			return Keyword(""), errors.New(msg)
 		}
 	}

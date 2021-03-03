@@ -81,7 +81,12 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 		core.LogDebug.Printf("User supplied/input box keyword: %s\n", inputKeyword)
 		// if the keyword has/slashes/within then we need to just use the first field here.
 		inputSplit := strings.Split(inputKeyword, "/")
-		pth.Keyword, _ = core.MakeNewKeyword(inputSplit[0])
+		pth.Keyword, err = core.MakeNewKeyword(inputSplit[0])
+		if err != nil {
+			msg := fmt.Sprintf("Your keyword of '%s' was not valid. %s'", inputKeyword, err.Error())
+			http.Error(w, msg, http.StatusBadRequest)
+			return tmpl, model, redirect, err
+		}
 		if len(inputSplit) > 1 {
 			pth.Tag = inputSplit[1]
 		}
@@ -93,7 +98,7 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 		tmpl, model, err = gohttp.RenderListPage(r)
 		return tmpl, model, redirect, err
 	} else { //deboog
-		fmt.Println("keyword does exist, proceeding to follow path...")
+		fmt.Println("keyword found, proceeding to follow path...")
 		core.PrintList(*ll)
 	}
 
@@ -107,7 +112,15 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 			// It's a real redirect, follow the list's behavior now.
 			redirect = true
 			core.LogDebug.Printf("Bare keyword redirect on '%s'\n", ll.Keyword)
+			// get the link pointer so we can nuke it.
+			lnk := core.LinkDataBase.GetLink(-1, ll.GetRedirectURL())
+			// Note we need to redirect THEN destroy the link.
+			redirect = true
 			http.Redirect(w, r, ll.GetRedirectURL(), 307)
+			if lnk.Dtime == core.BurnTime {
+				core.LogInfo.Printf("Link %d is being burned.\n", lnk.ID)
+				core.DestroyLink(lnk)
+			}
 		}
 
 		return tmpl, model, redirect, err
@@ -134,28 +147,19 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 			// pth.Tag is being treated as a substitution parameter/variable
 			l := core.LinkDataBase.GetLink(-1, url)
 			url, complete, err = gohttp.RenderSpecial(r, []string{pth.Tag}, l, ll)
-			if !complete {
-				// pth.Tag is now being treated as a link tag.
-				// Look in the ll tag mappings.
-				// if lid, exists := ll.TagBindings[pth.Tag]; exists {
-				// 	// redirect to that link's URL.
-				// 	// what if the link has {variables}?
-				// 	lnk := core.LinkDataBase.GetLink(lid, "")
-				// 	if url, cmp := GetURL(lnk.URL, lnk.LinkVariables); cmp {
-				// 		// subs complete using default link variables on the link, redirect.
-				// 		http.Redirect(w, r, url, 307)
-				// 	} else {
-				// 		// substitutions were somehow not completed
-				// 		http.Error(w, "default link variable substitutions did not yield a working link", http.StatusBadRequest)
-				// 	}
-
-				// 	// TODO, renderspecial with cookies code needed here
-				// }
-			} else {
+			if complete {
 				// substitution complete, they are redirected to the URL.
 				http.Redirect(w, r, url, 307)
 				redirect = true
+				if l.Dtime == core.BurnTime {
+					core.LogInfo.Printf("Link %d is being burned.\n", l.ID)
+					core.DestroyLink(l)
+				}
 				return tmpl, model, redirect, err
+			} else {
+				// There are remaining substitutions to perform.
+				// pth.Tag is now being treated as a link tag.
+				// This needs to be figured out.
 			}
 		} else {
 			// pth.Tag is being treated as a tag to look up a link in this list.
@@ -164,8 +168,13 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 			for id, tag := range ll.TagBindings {
 				if pth.Tag == tag {
 					core.LogDebug.Printf("Tag '%s' was found on list '%s'\n", pth.Tag, ll.Keyword)
-					http.Redirect(w, r, ll.Links[id].URL, 307) //TODO if this needs to do a replacement...we need it here.
+					lnk := ll.Links[id]
+					http.Redirect(w, r, lnk.URL, 307) //TODO if this needs to do a replacement...we need it here.
 					redirect = true
+					if lnk.Dtime == core.BurnTime {
+						core.LogInfo.Printf("Link %d is being burned.\n", lnk.ID)
+						core.DestroyLink(lnk)
+					}
 					return tmpl, model, redirect, err
 				}
 			}
@@ -188,6 +197,10 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 							core.LogDebug.Printf("Tag '%s' lookup url: %s\n", pth.Tag, url)
 							http.Redirect(w, r, url, 307)
 							redirect = true
+							if l.Dtime == core.BurnTime {
+								core.LogInfo.Printf("Link %d is being burned.\n", l.ID)
+								core.DestroyLink(l)
+							}
 							return tmpl, model, redirect, err
 						}
 						// if incomplete, I guess we can error out?

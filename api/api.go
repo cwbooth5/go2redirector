@@ -71,18 +71,6 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			if id == 0 {
 				// the working new link copy
 				inboundLink, _ = core.MakeNewlink(outboundLink.Url, outboundLink.Title)
-			} else {
-				inboundLink = core.LinkDataBase.Links[id]
-				inboundLink.Title = outboundLink.Title
-				inboundLink.URL = outboundLink.Url
-			}
-
-			// Check for keyword in db
-			ll, exists := core.LinkDataBase.Lists[outboundLink.Keyword]
-			if !exists {
-				// We need to create the keyword and link.
-				ll = core.MakeNewList(outboundLink.Keyword, inboundLink)
-
 				// The only time expiretime can be set is on link creation.
 				delta := r.FormValue("expiretime")
 				if err != nil {
@@ -99,7 +87,9 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 					// special case: burn after reading
 					// We set the date to time.Time nil value to encode this.
 					// Link pruning code should not remove this special case, even though it's well in the past.
+
 					exptime = core.BurnTime
+					core.LogDebug.Printf("burn time of %s set on link\n", exptime)
 				} else {
 					exptime, err = core.GetExpireTime(inboundLink.Ctime, delta)
 					if err != nil {
@@ -107,6 +97,18 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 				inboundLink.Dtime = exptime
+				core.LogDebug.Printf("inbount link Dtime %s\n", inboundLink.Dtime)
+			} else {
+				inboundLink = core.LinkDataBase.Links[id]
+				inboundLink.Title = outboundLink.Title
+				inboundLink.URL = outboundLink.Url
+			}
+
+			// Check for keyword in db
+			ll, exists := core.LinkDataBase.Lists[outboundLink.Keyword]
+			if !exists {
+				// We need to create the keyword and link.
+				ll = core.MakeNewList(outboundLink.Keyword, inboundLink)
 			}
 
 			// If they were decoupling the link, do it now and return
