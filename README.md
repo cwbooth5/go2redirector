@@ -54,6 +54,46 @@ Now your browser can be used to access the go2redirector like a search engine. S
 
 If your browser redirected to the Spanish version of Wikipedia, you're all set.
 
+## Design
+
+### Terminology
+
+* **Keywords** uniquely identify a list of links. It's a list name you can pronounce.
+* **Tags** are names for a link and are local to the list/keyword that link resides in.
+* **Parameters** are positional arguments users can supply to subsititute directly into a link's URL.
+* **Dotpage** is the 'edit' page for a given list and can be accessed by adding a dot `.` prefix to any keyword.
+* **Fields** are the elements between each forward slash `/` in a redirect string user's enter. For example, `go2 planets/mars/weather` would have fields "planets" (the keyword), "mars" (the tag), and "weather" the parameter.
+
+### Keywords/Lists
+
+Curation of a list of links starts with selecting an intuitive keyword. This is the name people will remember this list of links by. Think about the keyword and how general it is. Does it apply to other potential lists? If so, maybe come up with a more specific keyword name or combine the two lists.
+
+### Tags
+
+A tag is a name for a link within a list of links. The tag is the second (optional) field a user types in a go2 redirect. If you have a list of moons of Mars, you might tag one with "phobos" and another with "deimos", resulting in a redirect like `go2 mars/phobos` to go straight to whatever link describes that moon. Tags are optional. If a second field is specified by the user, the redirector attempts to locate a tag in the list by that name. If it fails to find one, the second field is treated as a subsititution parameter for the link.
+
+### Links
+
+If a link is added with a URL we already have a link for under some other keyword, we allow you to create a completely new link because you might have another title and different keyword associations. If you attempt to add a duplicate link, it will show you other keywords already using the link when looking at the dotpage.
+
+### The Search Box
+
+The input field in the upper left of the index page is the main entry point for the application. This is the field users can type keyword/tag/parameter combos into to get to a redirect or create a new ones.
+
+### "Burn after Reading" and Link Lifetime
+
+Links can have a date set which specifies the link's lifetime in the link database. By default, links never expire. Users can input various link lifetimes. The most unique of all selected link lifetimes is "burn after reading" which is exactly what it sounds like. The application will destroy the link after a single person has used it as a redirect. This is useful for links you'll only use or share once. You should select a reasonable lifetime for a link if it's not going to be eternal. This is the passive form of curation in the application, removing links as their expiration dates come up.
+
+### Editing and the Dotpage
+
+To force access to the list page of a keyword (regardless of list behavior), you simply prefix that keyword with a period or suffix it with a forward slash. Doing so will render the list page where the links can be changed around or tagged.
+
+### User-Provided Parameters
+
+The links in a list can have a `{1}` placed anywhere in the URL to serve as a substitution string for a single positional parameter supplied by the user. Right now, we only support one parameter, but this could change if there is a compelling reason for two or more. In the previous version of the redirector, these types of links with substitutions were called "special" links and they used `{*}` as a substitution string. For example, the keyword `go2 planets` can have a few links tagged with verious planet names. Each link URL can contain the subsititution string {1}.
+
+For the user input of `go2 planets/mars/weather` the go2redirector would locate the `planets` keyword, look up the link tagged with `mars`, get its URL of `www.nasa.gov/planets/mars/{1}.php`, and perform a substitution to `www.nasa.gov/planets/mars/weather.php`. Finally, the user would be redirected to that URL.
+
 ## Credits
 
 The original redirector [f5go](https://github.com/f5devcentral/f5go) was designed by Saul Pwanson, with assistance from Bryce Bockman and Treebird(tm).
