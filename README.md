@@ -46,7 +46,7 @@ Each browser has a slightly different configuration procedure to enable keyword 
 3. Click the "Add' button.
 4. For the **Search engine** field, choose a descriptive name.
 5. for the **Keyword** field, use `go2`.
-6. For the URL, enter `http://localhost:8000/?keyword=%s`
+6. For the URL, enter `http://localhost:8080/?keyword=%s`
 
 Now your browser can be used to access the go2redirector like a search engine. Set the keyword to `go2` and use the search box
 
