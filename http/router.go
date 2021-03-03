@@ -114,25 +114,25 @@ func RouteLink(w http.ResponseWriter, r *http.Request) {
 		}
 		core.LogDebug.Printf("Raw Query: %s", ddd)
 		// Links can have cookie overrides.
-		if len(r.Cookies()) > 0 {
-			for _, cookie := range r.Cookies() {
-				// names are pipe-delimted ex. 'keyword|name'
-				nameFields := strings.Split(cookie.Name, "|")
-				k := nameFields[0] // keyword
-				p := nameFields[1] // pattern
-				i := nameFields[2] // linkid
+		// if len(r.Cookies()) > 0 {
+		// 	for _, cookie := range r.Cookies() {
+		// 		// names are pipe-delimted ex. 'keyword|name'
+		// 		nameFields := strings.Split(cookie.Name, "|")
+		// 		k := nameFields[0] // keyword
+		// 		p := nameFields[1] // pattern
+		// 		i := nameFields[2] // linkid
 
-				// slashes cannot be in cookies so we use underscore. Change it back, if present.
-				k = strings.ReplaceAll(k, "_", "/")
+		// 		// slashes cannot be in cookies so we use underscore. Change it back, if present.
+		// 		k = strings.ReplaceAll(k, "_", "/")
 
-				kwd := core.Keyword(k)
-				fmt.Printf("COOKIE SHIT: %s\n", cookie)
-				if kwd == keyword && fmt.Sprint(lnk.ID) == i {
-					// Cookie name indicated it was for this keyword AND link ID.
-					overrides[p] = cookie.Value
-				}
-			}
-		}
+		// 		kwd := core.Keyword(k)
+		// 		fmt.Printf("COOKIE SHIT: %s\n", cookie)
+		// 		if kwd == keyword && fmt.Sprint(lnk.ID) == i {
+		// 			// Cookie name indicated it was for this keyword AND link ID.
+		// 			overrides[p] = cookie.Value
+		// 		}
+		// 	}
+		// }
 
 		order := 1 // indexed at 1 since we use param1, param2...
 		for kee, val := range r.URL.Query() {
@@ -395,25 +395,25 @@ func RenderSpecial(r *http.Request, params []string, l *core.Link, ll *core.List
 
 	// Check cookies first and perform replacements.
 	// For any substitutions in the usage URL, we allow the user to override anything.
-	if len(r.Cookies()) > 0 {
-		// If the client has cookies, use them.
-		core.LogDebug.Printf("User had custom cookies to override values: %s\n", r.Cookies())
-		for _, c := range r.Cookies() {
-			nameFragments := strings.Split(c.Name, "|")
-			k := nameFragments[0]
-			p := nameFragments[1]
-			i := nameFragments[2]
+	// if len(r.Cookies()) > 0 {
+	// 	// If the client has cookies, use them.
+	// 	core.LogDebug.Printf("User had custom cookies to override values: %s\n", r.Cookies())
+	// 	for _, c := range r.Cookies() {
+	// 		nameFragments := strings.Split(c.Name, "|")
+	// 		k := nameFragments[0]
+	// 		p := nameFragments[1]
+	// 		i := nameFragments[2]
 
-			// slashes cannot be in cookies so we use underscore. Change it back, if present.
-			k = strings.ReplaceAll(k, "_", "/")
+	// 		// slashes cannot be in cookies so we use underscore. Change it back, if present.
+	// 		k = strings.ReplaceAll(k, "_", "/")
 
-			kwd := core.Keyword(k)
-			if kwd == ll.Keyword && fmt.Sprint(l.ID) == i {
-				inputLinkVariables[p] = c.Value
-			}
-		}
-	}
-	core.LogDebug.Printf("Variables after cookies: %s\n", inputLinkVariables)
+	// 		kwd := core.Keyword(k)
+	// 		if kwd == ll.Keyword && fmt.Sprint(l.ID) == i {
+	// 			inputLinkVariables[p] = c.Value
+	// 		}
+	// 	}
+	// }
+	// core.LogDebug.Printf("Variables after cookies: %s\n", inputLinkVariables)
 	finalURL, complete = core.GetURL(l.URL, inputLinkVariables)
 	// Return early if we find no more substitutions to be done.
 	if complete {
