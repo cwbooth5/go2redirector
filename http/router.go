@@ -514,7 +514,10 @@ func RenderLinkPage(r *http.Request) (string, ModelIndex, error) {
 	inputKeyword := r.URL.Query().Get("keyword") // only set if they entered a keyword in the input box
 	if inputKeyword != "" {
 		core.LogDebug.Printf("User supplied keyword: %s\n", inputKeyword)
-		pth.Keyword, _ = core.MakeNewKeyword(inputKeyword)
+		// TODO: the "keyword" here could be something like "keyword/.tag"
+
+		inputSplit := strings.Split(inputKeyword, "/")
+		pth.Keyword, err = core.MakeNewKeyword(inputSplit[0])
 	}
 
 	// Determine if the keyword already exists.
