@@ -57,13 +57,14 @@ type Link struct {
 	URL   string
 	Title string
 	// Lists         map[Keyword]*ListOfLinks // old: Lists []Keyword
-	Lists         []Keyword
-	Ctime         time.Time
-	Mtime         time.Time
-	Atime         time.Time
-	Dtime         time.Time
-	Special       bool
+	Lists []Keyword
+	Ctime time.Time
+	Mtime time.Time
+	Atime time.Time
+	Dtime time.Time
+	//Special       bool
 	LinkVariables map[string]string
+	Clicks        int
 }
 
 // ListOfLinks most notably contains a map of [int]*link referring to all links coupled
@@ -212,6 +213,10 @@ func (l Link) AKA() []*Link {
 	return found
 }
 
+func (l Link) Special() bool {
+	return strings.ContainsAny(l.URL, "{}")
+}
+
 // GetRedirectURL will return a URL string for given keyword based on its current behavior.
 func (ll *ListOfLinks) GetRedirectURL() string {
 	/*
@@ -237,7 +242,7 @@ func (ll *ListOfLinks) GetRedirectURL() string {
 		// TODO: the sort interface available is on arrays of *listoflinks.
 		// That won't work here. We need to first get a click count on each link itself.
 		// Then we need to sort by that click count to find the link with the highest number.
-		return fmt.Sprintf("%s/.%s", ListenURL(), ll.Keyword)
+		return TopLink(*ll).URL
 	case RedirectToRandom:
 		// Just pick a random link under this list of links.
 		randURL := ll.Links[rand.Intn(len(ll.Links))]
@@ -272,8 +277,18 @@ func (ll *ListOfLinks) GetTag(i int) string {
 	return ll.TagBindings[i]
 }
 
+func (ll *ListOfLinks) ClickSort() []*Link {
+	sorted := []*Link{}
+	for _, lnk := range ll.Links {
+		sorted = append(sorted, lnk)
+	}
+	sort.Sort(ByLinkClicks(sorted))
+
+	return sorted
+}
+
 // GetSimilar locates similarly-named keywords from an existing list of links.
-func (ll ListOfLinks) GetSimilar(kwd Keyword) []Keyword {
+func (ll *ListOfLinks) GetSimilar(kwd Keyword) []Keyword {
 	targets := []Keyword{}
 	s1 := string(kwd)
 	allLists := LinkDataBase.Lists // TODO: rmutex

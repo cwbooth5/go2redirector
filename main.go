@@ -116,10 +116,19 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 			tmpl, model, err = gohttp.RenderListPage(r) // force to the list edit page
 		} else {
 			// It's a real redirect, follow the list's behavior now.
-			redirect = true
-			core.LogDebug.Printf("Bare keyword redirect on '%s'\n", ll.Keyword)
-			// get the link pointer so we can nuke it.
+
 			lnk := core.LinkDataBase.GetLink(-1, ll.GetRedirectURL())
+			if lnk.Special() {
+				// They asked to be redirected, but didn't provide that second field.
+				msg := fmt.Sprintf("The redirect URL for this list requires a substitution parameter. Try '%s/(pattern)'.", pth.Keyword)
+				// http.Error(w, msg, http.StatusBadRequest)
+				tmpl, model, err = gohttp.RenderListPage(r)
+				model.ErrorMessage = msg
+				core.LogDebug.Println("Link is special, errors, we are returning....")
+				return tmpl, model, redirect, err
+			}
+			lnk.Clicks++
+			core.LogDebug.Printf("Bare keyword redirect on '%s', clicks: %d\n", ll.Keyword, lnk.Clicks)
 			// Note we need to redirect THEN destroy the link.
 			redirect = true
 			http.Redirect(w, r, ll.GetRedirectURL(), 307)
@@ -128,7 +137,6 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 				core.DestroyLink(lnk)
 			}
 		}
-
 		return tmpl, model, redirect, err
 
 	case pth.Len() == 2:
@@ -165,6 +173,7 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 		if strings.ContainsAny(url, "{}") {
 			// pth.Tag is being treated as a substitution parameter/variable
 			l := core.LinkDataBase.GetLink(-1, url)
+			l.Clicks++
 			url, complete, err = gohttp.RenderSpecial(r, []string{pth.Tag}, l, ll)
 			if complete {
 				// substitution complete, they are redirected to the URL.
@@ -188,6 +197,7 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 				if pth.Tag == tag {
 					core.LogDebug.Printf("Tag '%s' was found on list '%s'\n", pth.Tag, ll.Keyword)
 					lnk := ll.Links[id]
+					lnk.Clicks++
 					http.Redirect(w, r, lnk.URL, 307) //TODO if this needs to do a replacement...we need it here.
 					redirect = true
 					if lnk.Dtime == core.BurnTime {
@@ -214,6 +224,7 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 						url, complete, err = gohttp.RenderSpecial(r, []string{pth.Params[0]}, l, ll)
 						if complete {
 							core.LogDebug.Printf("Tag '%s' lookup url: %s\n", pth.Tag, url)
+							l.Clicks++
 							http.Redirect(w, r, url, 307)
 							redirect = true
 							if l.Dtime == core.BurnTime {

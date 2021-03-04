@@ -42,6 +42,13 @@ func (a ByMtime) Len() int           { return len(a) }
 func (a ByMtime) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByMtime) Less(i, j int) bool { return a[j].Mtime.Before(a[i].Mtime) }
 
+// ByLinkClicks implements sorting by click count on each link.
+type ByLinkClicks []*Link
+
+func (a ByLinkClicks) Len() int           { return len(a) }
+func (a ByLinkClicks) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByLinkClicks) Less(i, j int) bool { return a[j].Clicks < a[i].Clicks }
+
 // Return a URL of this redirector, used for redirects back to index
 // If ExternalPort and ListenPort are different in the configuration, return only the ExternalAddress.
 // Otherwise, return the explicit listen address/port.
@@ -57,6 +64,10 @@ func ListenURL() *url.URL {
 		log.Fatalf("Config URL would not parse. Check configured addresses and ports. '%s'\n", s)
 	}
 	return url
+}
+
+func TopLink(ll ListOfLinks) *Link {
+	return ll.ClickSort()[0]
 }
 
 func Shutdown() {

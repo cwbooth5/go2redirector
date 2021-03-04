@@ -10,13 +10,17 @@
          <!-- Check here to see if this keyword exists. If so, show them the behavior change table. -->
           {{ if .KeywordExists }}
           <div class="card-header text-center">
+            {{ if .ErrorMessage }}
+            <div class="alert alert-warning" role="alert">
+              {{ .ErrorMessage }}
+            </div>
+            {{ end }}
             <form action="/api/behavior/" method="POST">
               <div class="input-group behavior-selector">
                 <div class="input-group-prepend">
                   <label class="input-group-text" for="inputGroupSelect01"><a href="/{{ .Keyword }}"><span class="go2keyword go2keyword-small">{{ .RedirectorName }}/{{ .Keyword }}</span></a>&nbsp redirects to</label>
                   <input type="hidden" name="keyword" value="{{ .Keyword }}"/>
                   <input type="hidden" name="internal" value="true"/>
-
                 </div>
                 <select class="form-control" name="behavior">
                   <option value="-1" {{ if eq $behavior "-1" }}selected{{ end }}>this page</option>
@@ -82,7 +86,7 @@
         </table>
         {{- end }}
 
-              
+
       </div>
     </div>
     {{/* {{ $thislist := .LinkDB.MyList .Keyword }} */}}
