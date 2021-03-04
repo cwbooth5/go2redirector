@@ -87,10 +87,10 @@
         {{- end }}
 
 
+
       </div>
     </div>
-    {{/* {{ $thislist := .LinkDB.MyList .Keyword }} */}}
-    {{/* {{ $thislist := index .LinkDB.Lists .Keyword }}
+    {{ $thislist := .GetMyList .Keyword }}
     {{ $similar := $thislist.GetSimilar .Keyword }}
     {{ $count := len $similar}}
     <div class="col-6">
@@ -121,7 +121,7 @@
         </table>
 
       </div>
-    </div> */}}
+    </div>
 </div> <!-- container-fluid -->
 
 {{ end }}
