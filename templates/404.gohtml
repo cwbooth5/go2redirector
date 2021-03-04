@@ -12,10 +12,13 @@
     <div>
         <h1>Whoops!</h1>
         <h4>{{ .Title }}</h4>
+        {{ if .ErrorMessage }}
+            <div class="alert alert-secondary" role="alert">{{ .ErrorMessage }}</div>
+        {{ end }}
     </div>
     <div class="row no-gutters">
       <div class="col align-self-end">
-        <img src="/static/img/dog.gif"> 
+        <img src="/static/img/dog.gif">
       </div>
     </div>
   </div>

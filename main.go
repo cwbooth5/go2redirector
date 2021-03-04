@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"html"
 	"log"
 	"net/http"
 	"os"
@@ -80,8 +81,10 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 		inputSplit := strings.Split(inputKeyword, "/")
 		pth.Keyword, err = core.MakeNewKeyword(inputSplit[0])
 		if err != nil {
-			msg := fmt.Sprintf("Your keyword of '%s' was not valid. %s'", inputKeyword, err.Error())
-			http.Error(w, msg, http.StatusBadRequest)
+			msg := fmt.Sprintf("Your keyword of '%s' was not valid. %s'", html.EscapeString(inputKeyword), err.Error())
+			// http.Error(w, msg, http.StatusBadRequest)
+			tmpl = "404.gohtml"
+			model.ErrorMessage = msg
 			return tmpl, model, redirect, err
 		}
 		if len(inputSplit) > 1 {
@@ -166,49 +169,45 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 		}
 		if !tagfound {
 			core.LogDebug.Printf("Tag '%s' was not found under keyword '%s'.\n", pth.Tag, pth.Keyword)
-			tmpl, model, err = gohttp.RenderListPage(r)
-			return tmpl, model, redirect, err
-		}
-
-		url := ll.GetRedirectURL()
-		if strings.ContainsAny(url, "{}") {
-			// pth.Tag is being treated as a substitution parameter/variable
-			l := core.LinkDataBase.GetLink(-1, url)
-			l.Clicks++
-			url, complete, err = gohttp.RenderSpecial(r, []string{pth.Tag}, l, ll)
-			if complete {
-				// substitution complete, they are redirected to the URL.
-				http.Redirect(w, r, url, 307)
-				redirect = true
-				if l.Dtime == core.BurnTime {
-					core.LogInfo.Printf("Link %d is being burned.\n", l.ID)
-					core.DestroyLink(l)
-				}
-				return tmpl, model, redirect, err
-			} else {
-				// There are remaining substitutions to perform.
-				// pth.Tag is now being treated as a link tag.
-				// This needs to be figured out.
-			}
-		} else {
-			// pth.Tag is being treated as a tag to look up a link in this list.
-			core.LogDebug.Printf("resolved redirectURL contains no variables. %s\n", url)
-			// search for the tag in this list. If it is there, redirect to that link. If not, edit list page is rendered
-			for id, tag := range ll.TagBindings {
-				if pth.Tag == tag {
-					core.LogDebug.Printf("Tag '%s' was found on list '%s'\n", pth.Tag, ll.Keyword)
-					lnk := ll.Links[id]
-					lnk.Clicks++
-					http.Redirect(w, r, lnk.URL, 307) //TODO if this needs to do a replacement...we need it here.
+			// Now we try to use their input as a parameter.
+			url := ll.GetRedirectURL()
+			if strings.ContainsAny(url, "{}") {
+				// pth.Tag is being treated as a substitution parameter/variable
+				l := core.LinkDataBase.GetLink(-1, url)
+				l.Clicks++
+				url, complete, err = gohttp.RenderSpecial(r, []string{pth.Tag}, l, ll)
+				if complete {
+					// substitution complete, they are redirected to the URL.
+					http.Redirect(w, r, url, 307)
 					redirect = true
-					if lnk.Dtime == core.BurnTime {
-						core.LogInfo.Printf("Link %d is being burned.\n", lnk.ID)
-						core.DestroyLink(lnk)
+					if l.Dtime == core.BurnTime {
+						core.LogInfo.Printf("Link %d is being burned.\n", l.ID)
+						core.DestroyLink(l)
 					}
 					return tmpl, model, redirect, err
 				}
+			} else {
+				// pth.Tag is being treated as a tag to look up a link in this list.
+				core.LogDebug.Printf("resolved redirectURL contains no variables. %s\n", url)
+				// search for the tag in this list. If it is there, redirect to that link. If not, edit list page is rendered
+				for id, tag := range ll.TagBindings {
+					if pth.Tag == tag {
+						core.LogDebug.Printf("Tag '%s' was found on list '%s'\n", pth.Tag, ll.Keyword)
+						lnk := ll.Links[id]
+						lnk.Clicks++
+						http.Redirect(w, r, lnk.URL, 307) //TODO if this needs to do a replacement...we need it here.
+						redirect = true
+						if lnk.Dtime == core.BurnTime {
+							core.LogInfo.Printf("Link %d is being burned.\n", lnk.ID)
+							core.DestroyLink(lnk)
+						}
+						return tmpl, model, redirect, err
+					}
+				}
 			}
 		}
+		tmpl, model, err = gohttp.RenderListPage(r)
+		return tmpl, model, redirect, err
 
 	case pth.Len() == 3:
 		// Third use case: keyord/tag/param
