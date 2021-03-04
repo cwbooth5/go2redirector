@@ -70,9 +70,6 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 	var err error
 	var complete bool
 
-	//var workingKeyword string
-
-	// var complete bool
 	core.LogDebug.Printf("URL path being parsed: %s\n", r.URL.Path)
 	pth, err := core.ParsePath(r.URL.Path)
 	core.LogDebug.Printf("Resulting keyword: %s\n", pth.Keyword)
@@ -92,6 +89,10 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 		}
 		if len(inputSplit) > 2 {
 			pth.Params = append(pth.Params, inputSplit[2])
+		}
+		if core.EditMode(inputKeyword) {
+			tmpl, model, err = gohttp.RenderListPage(r)
+			return tmpl, model, redirect, err
 		}
 	}
 	core.LogDebug.Printf("parsed path Keyword: %s\n", pth.Keyword)

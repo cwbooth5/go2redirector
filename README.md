@@ -90,7 +90,7 @@ To force access to the list page of a keyword (regardless of list behavior), you
 
 ### User-Provided Parameters
 
-The links in a list can have a `{1}` placed anywhere in the URL to serve as a substitution string for a single positional parameter supplied by the user. Right now, we only support one parameter, but this could change if there is a compelling reason for two or more. In the previous version of the redirector, these types of links with substitutions were called "special" links and they used `{*}` as a substitution string. For example, the keyword `go2 planets` can have a few links tagged with verious planet names. Each link URL can contain the subsititution string {1}.
+The links in a list can have a `{1}` placed anywhere in the URL to serve as a substitution string for a single positional parameter supplied by the user. Right now, we only support one parameter, but this could change if there is a compelling reason for two or more. In the previous version of the redirector, these types of links with substitutions were called "special" links and they used `{*}` as a substitution string. For example, the keyword `go2 planets` can have a few links tagged with various planet names. Each link URL can contain the subsititution string {1}.
 
 For the user input of `go2 planets/mars/weather` the go2redirector would locate the `planets` keyword, look up the link tagged with `mars`, get its URL of `www.nasa.gov/planets/mars/{1}.php`, and perform a substitution to `www.nasa.gov/planets/mars/weather.php`. Finally, the user would be redirected to that URL.
 
