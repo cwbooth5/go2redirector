@@ -162,9 +162,22 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 
 		// Check for the use case of "existing keyword but missing tag"
 		var tagfound bool
-		for _, tag := range ll.TagBindings {
+		for id, tag := range ll.TagBindings {
 			if pth.Tag == tag {
 				tagfound = true
+				core.LogDebug.Printf("Tag '%s' located on list, link ID %d\n", pth.Tag, id)
+				l := core.LinkDataBase.GetLink(id, "")
+				if !l.Special() {
+					l.Clicks++
+					core.LogDebug.Println("Redirecting based on tag")
+					http.Redirect(w, r, l.URL, 307)
+					redirect = true
+					if l.Dtime == core.BurnTime {
+						core.LogInfo.Printf("Link %d is being burned.\n", l.ID)
+						core.DestroyLink(l)
+					}
+					return tmpl, model, redirect, err
+				}
 			}
 		}
 		if !tagfound {
