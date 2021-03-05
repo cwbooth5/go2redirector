@@ -299,7 +299,7 @@ func routeHappyHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		// process it as a keyword
 		var redirect bool
-		core.LogDebug.Printf("\tDefault handling hit for path: %s\n", p)
+		core.LogDebug.Printf("Default handling hit for path: %s\n", p)
 
 		tmpl, model, redirect, _ := handleKeyword(w, r)
 		if !redirect {

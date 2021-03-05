@@ -306,7 +306,6 @@ func (ll *ListOfLinks) GetSimilar(kwd Keyword) []Keyword {
 			targets = append(targets, val.Keyword)
 		}
 	}
-	// fmt.Printf("SIMILAR TARGETS: %v\n", targets)
 	return targets
 }
 
@@ -421,7 +420,6 @@ func (d *LinkDatabase) Couple(ll *ListOfLinks, linkObj *Link) {
 	}
 
 	ll.Links[linkObj.ID] = linkObj
-	PrintList(*ll)
 }
 
 // CommitNewLink adds a Link object to the database.
