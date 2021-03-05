@@ -134,7 +134,6 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 				// inbound link has its new linkid now.
 				outboundLink.ID = lid
 				core.LogDebug.Printf("New link with ID %d was added to the DB.\n", lid)
-
 				ll.TagBindings[lid] = outboundLink.Tag
 			} else {
 				// tag binding
@@ -154,9 +153,13 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 				kwd, _ := core.MakeNewKeyword(kw)
 				if ll, exists := core.LinkDataBase.Lists[kwd]; exists {
 					core.LinkDataBase.Couple(ll, inboundLink)
-					allMemberships = append(allMemberships, kwd)
-					core.LogDebug.Printf("Coupling link to otherlist '%s'", kwd)
+				} else {
+					// The other list they were trying to add to doesn't exist. No problem. Create it.
+					newList := core.MakeNewList(kwd, inboundLink)
+					core.LinkDataBase.Couple(newList, inboundLink)
 				}
+				allMemberships = append(allMemberships, kwd)
+				core.LogDebug.Printf("Coupling link to otherlist '%s'", kwd)
 			}
 
 			// link variables
