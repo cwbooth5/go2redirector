@@ -122,6 +122,28 @@
 
       </div>
     </div>
+
+
+
+    <div class="col-6">
+        {{/* this div intentionally left blank, unless keyword logging is turned on */}}
+        {{ if .KeywordExists}}
+          {{ if .GetLogging .Keyword }}
+           <div class="card">
+              Recent Redirects
+              <ul class="list-group">
+                {{ range .UsageLog }}
+                <li class="list-group-item">{{ . }}</li>
+                {{- end }}
+            </div>
+          {{- end }}
+        {{- end }}
+      </div>
+
+
+
+
+
 </div> <!-- container-fluid -->
 
 {{ end }}

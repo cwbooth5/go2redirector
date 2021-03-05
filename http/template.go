@@ -161,8 +161,18 @@ func (m *ModelIndex) IdentifyBuild() string {
 	return fmt.Sprintf("%x", hsh.Sum(nil))
 }
 
-// give keyword, get list of links
+// GetMyList takes a Keyword and returns a list of links
 func (m *ModelIndex) GetMyList(k core.Keyword) *core.ListOfLinks {
 	// kwd, _ := makeNewKeyword(k)
 	return core.LinkDataBase.Lists[k]
+}
+
+// GetLogging returns a boolean value indicating a list's logging setting. true == on
+func (m *ModelIndex) GetLogging(kwd core.Keyword) bool {
+	a, exists := core.LinkDataBase.Lists[kwd]
+	if exists {
+		return a.Logging
+	}
+	return core.LinkLogNewKeywords
+
 }

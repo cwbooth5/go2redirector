@@ -147,6 +147,13 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			inboundLink.Atime = now
 			inboundLink.Mtime = now
 
+			// Set the user's logging setting for this list of links/keyword.
+			if logging := r.PostFormValue("linklog") == "enable"; logging {
+				ll.ModifyLogging(true)
+			} else {
+				ll.ModifyLogging(false)
+			}
+
 			// list memberships
 			var allMemberships = core.LinkDataBase.Links[inboundLink.ID].Lists
 			for _, kw := range strings.Fields(r.PostFormValue("otherlists")) {

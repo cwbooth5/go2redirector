@@ -190,6 +190,11 @@ func MakeNewList(keyword Keyword, linkobj *Link) *ListOfLinks {
 	default:
 		behavior = RedirectToFreshest
 	}
+
+	// Create a place for log entries on this list.
+	var a []string
+	LinkLog[keyword] = a
+
 	return &ListOfLinks{
 		Keyword:     keyword,
 		Links:       make(map[int]*Link),
@@ -378,7 +383,7 @@ func (d *LinkDatabase) Decouple(ll *ListOfLinks, linkObj *Link) {
 	if len(ll.Links) == 0 {
 		delete(d.Lists, ll.Keyword)
 		// remove the usage log for this keyword
-		//delete(LinkLog, ll.Keyword)  TODO, turn this back on
+		delete(LinkLog, ll.Keyword)
 	}
 
 	// Remove the list's keyword from the link's memberships.

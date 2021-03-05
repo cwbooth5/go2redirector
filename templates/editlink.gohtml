@@ -168,7 +168,6 @@ window.addEventListener('load', function() {
             </tr>
 
 
-            {{ if $isspecial }}
             <tr>
               <td>
                 Keyword Usage Logging
@@ -182,7 +181,7 @@ window.addEventListener('load', function() {
                 </div>
               </td>
             </tr>
-            {{ end }}
+
             <tr>
               <td>Link Expiration</td>
               {{ if not .LinkExists }}

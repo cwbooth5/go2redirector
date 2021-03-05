@@ -473,7 +473,7 @@ func RenderListPage(r *http.Request) (string, ModelIndex, error) {
 
 	// What if the keyword they are entering is similar?
 	// What if any links in their list are functionally identical to what others added?
-
+	core.LogDebug.Printf("USAGE LOG: %s\n", core.LinkLog[pth.Keyword])
 	model = ModelIndex{
 		Title:              "list",
 		LinkDB:             *core.LinkDataBase,
@@ -484,6 +484,7 @@ func RenderListPage(r *http.Request) (string, ModelIndex, error) {
 		LinkBeingEdited:    core.LinkZero,
 		RedirectorName:     core.RedirectorName,
 		ErrorMessage:       "",
+		UsageLog:           core.LinkLog[pth.Keyword],
 	}
 
 	// regular lists go to list, special goes to the special page

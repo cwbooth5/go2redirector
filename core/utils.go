@@ -76,7 +76,7 @@ func Shutdown() {
 	LinkDataBase.Export()
 }
 
-// rotateSlice adds val at s[0], rotating all existing elements 1 position rightward
+// RotateSlice adds val at s[0], rotating all existing elements 1 position rightward.
 // This limits capacity of s to LinkLogCapacity, as defined in the config file.
 func RotateSlice(s []string, val string) []string {
 	// This inserts at the front of the slice.

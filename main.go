@@ -175,6 +175,11 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 					if l.Dtime == core.BurnTime {
 						core.LogInfo.Printf("Link %d is being burned.\n", l.ID)
 						core.DestroyLink(l)
+					} else {
+						if ll.Logging {
+							usage := strings.Join([]string{string(pth.Keyword), pth.Tag}, "/")
+							core.LinkLog[pth.Keyword] = core.RotateSlice(core.LinkLog[pth.Keyword], usage)
+						}
 					}
 					return tmpl, model, redirect, err
 				}
@@ -196,6 +201,11 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 					if l.Dtime == core.BurnTime {
 						core.LogInfo.Printf("Link %d is being burned.\n", l.ID)
 						core.DestroyLink(l)
+					} else {
+						if ll.Logging {
+							usage := strings.Join([]string{string(pth.Keyword), pth.Tag}, "/")
+							core.LinkLog[pth.Keyword] = core.RotateSlice(core.LinkLog[pth.Keyword], usage)
+						}
 					}
 					return tmpl, model, redirect, err
 				}
@@ -213,6 +223,11 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 						if lnk.Dtime == core.BurnTime {
 							core.LogInfo.Printf("Link %d is being burned.\n", lnk.ID)
 							core.DestroyLink(lnk)
+						} else {
+							if ll.Logging {
+								usage := strings.Join([]string{string(pth.Keyword), pth.Tag}, "/")
+								core.LinkLog[pth.Keyword] = core.RotateSlice(core.LinkLog[pth.Keyword], usage)
+							}
 						}
 						return tmpl, model, redirect, err
 					}
