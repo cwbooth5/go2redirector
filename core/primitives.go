@@ -299,11 +299,10 @@ func (ll *ListOfLinks) GetSimilar(kwd Keyword) []Keyword {
 		}
 		ratio := Similar(s1, s2)
 		if ratio < LevDistRatio && s1 != s2 {
-			LogDebug.Printf("Adding '%s' (low ratio)", val.Keyword)
+			// low ratio
 			targets = append(targets, val.Keyword)
 		} else if strings.Contains(s1, s2) || strings.Contains(s2, s1) {
-			// look for substring matches
-			LogDebug.Printf("Adding '%s' (substring match)", val.Keyword)
+			// substring match
 			targets = append(targets, val.Keyword)
 		}
 	}
@@ -315,10 +314,10 @@ func (ll *ListOfLinks) GetSimilar(kwd Keyword) []Keyword {
 	Core linkdatabase operations
 */
 
-var LinkDataBase = makeNewLinkDatabase()
+var LinkDataBase = MakeNewLinkDatabase()
 
 // NewLinkDatabase is an exported constructor for making that first links db
-func makeNewLinkDatabase() *LinkDatabase {
+func MakeNewLinkDatabase() *LinkDatabase {
 	return &LinkDatabase{
 		Lists:      make(map[Keyword]*ListOfLinks),
 		Links:      make(map[int]*Link),

@@ -97,7 +97,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 				inboundLink.Dtime = exptime
-				core.LogDebug.Printf("inbount link Dtime %s\n", inboundLink.Dtime)
+				core.LogDebug.Printf("inbound link Dtime %s\n", inboundLink.Dtime)
 			} else {
 				inboundLink = core.LinkDataBase.Links[id]
 				inboundLink.Title = outboundLink.Title
