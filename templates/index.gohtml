@@ -63,7 +63,7 @@
         {{ $length := len .Links }}
         {{ if gt $length 1 }}
         {{/* <div class="row"> */}}
-          <a class="go2keyword go2keyword-small" href="/.{{ .Keyword }}" title="{{ .Clicks }} clicks" role="button">{{ $.RedirectorName }}/{{ .Keyword }} <span class="badge badge-go2">{{ $length }}</span></a>
+          <a class="go2keyword go2keyword-small" href="/.{{ .Keyword }}" title="{{ .Clicks }} clicks, {{ $length }} links" role="button">{{ $.RedirectorName }}/{{ .Keyword }}</a><sup>{{ $length }}</sup>
         {{/* </div> */}}
         {{ else }}
         {{/* <div class="row"> */}}
