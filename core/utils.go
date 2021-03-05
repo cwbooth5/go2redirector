@@ -285,7 +285,7 @@ func SanitizeURL(u string) string {
 	var cleaned string
 	cleaned = strings.TrimSpace(u)
 	cleaned = strings.ReplaceAll(cleaned, "\r\n", "")
-	if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
+	if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") && !strings.HasPrefix(u, "slack://") {
 		// This prefix has to be here because redirects require it. Browsers need it to understand it's a URL.
 		cleaned = fmt.Sprintf("http://%s", cleaned)
 	}
