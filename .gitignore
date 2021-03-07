@@ -17,3 +17,5 @@
 *.crt
 *.pem
 *.key
+
+godb.json*
