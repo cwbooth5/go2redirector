@@ -1,0 +1,14 @@
+{
+  "_comment": "This is a config file for the go2 redirector.",
+  "local_listen_address": "127.0.0.1",
+  "local_listen_port": 8080,
+  "external_address": "localhost",
+  "external_port": 8080,
+  "godb_filename": "godb.json",
+  "redirector_name": "go2",
+  "prune_interval": "30s",
+  "new_list_behavior": "rFreshest",
+  "levenshtein_distance_ratio": 0.6,
+  "link_log_new_keywords": true,
+  "link_log_capacity": 10
+}
