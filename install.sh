@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 # This is here for two purposes.
 # 1. It allows us to define our initial config JSON without tracking the config file itself.
 # 2. It allows comments so users know what fields mean.
@@ -39,6 +38,12 @@ JSON=$(grep -v '^ *#' << EOF
 }
 EOF
 )
+
+# Yes, it's silly to force someone to have jq, but for this we use it to validate the json.
+if ! command -v jq &>/dev/null; then
+    echo "You need to install the 'jq' command to generate this config file.'"
+    exit 1
+fi
 
 # if the file doesn't already exist, create a new one with the above contents.
 if [ ! -e $GOCONFIG ]; then
