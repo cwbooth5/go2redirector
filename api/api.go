@@ -226,13 +226,12 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusNotImplemented)
 		}
-		// w.Header().Set("Content-Type", "application/json")
-		// w.WriteHeader(http.StatusConflict)
+
 	} else if r.URL.RequestURI() == "/api/keywords" {
 		// Keywords API, used initially just to get the data for the search box. proof-of-concept
 		switch r.Method {
 		case "POST":
-			core.LogDebug.Printf("post to keyword API")
+			core.LogDebug.Printf("post to keyword API, TODO")
 		case "GET":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusFound)
@@ -242,7 +241,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			core.LogDebug.Println("/api/keywords route hit")
+			//core.LogDebug.Println("/api/keywords route hit")
 			w.Write(data)
 		}
 	}

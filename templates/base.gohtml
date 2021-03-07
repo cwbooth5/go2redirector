@@ -239,41 +239,10 @@
         position: absolute!important;
         width: 1px!important;
     }
-
-
-
-
-
-#searchBar {
-    width: 100%;
-    height: 32px;
-    border-radius: 3px;
-    border: 1px solid #eaeaea;
-    padding: 5px 10px;
-    font-size: 12px;
-}
-
-#searchWrapper {
-    position: relative;
-}
-
-#searchWrapper::after {
-    content: '🔍';
-    position: absolute;
-    top: 7px;
-    right: 15px;
-}
-
-
-
     </style>
 
 </head>
 <body>
-   
-
-
-
     {{ $thislist := .GetMyList .Keyword }}
     <div class="container-fluid">
         <div class="row">
@@ -282,25 +251,13 @@
                     <div>
                       <a href="/" title="Redirector home" id="titletext">{{ .RedirectorName }}/</a>
                     </div>
-                    {{ if or .KeywordExists .Keyword }}<p class="go2keyword go2keyword-large">{{ .Keyword }}</p>{{ else }}<form id="go2outerform" class="form-control" action="/"><input id="go2input" aria-label="Large" aria-describedby="inputGroup-sizing-sm" type="text" name="keyword" size="12" value=""/></form>{{ end }}
+                    {{ if or .KeywordExists .Keyword }}<p class="go2keyword go2keyword-large">{{ .Keyword }}</p>{{ else }}<form id="go2outerform" class="form-control" action="/"><input id="go2input"  autocomplete="off" aria-label="Large" aria-describedby="inputGroup-sizing-sm" type="text" name="keyword" size="12" value=""/></form>{{ end }}
                   </div>
-
-
-
-                <div id="searchwrapper">
-                    <input type="text" id="searchbar" name="searchbar" placeholder=""/>
-                </div>
-
-
-            <ul id="keywordslist" class="list-inline"></ul>
-
-
 
             </div>
             <div class="col-sm-2">
                 <a href="/" title="Redirector home" id="titletext">about</a>
             </div>
-
 
         </div>
         <nav aria-label="breadcrumb">
