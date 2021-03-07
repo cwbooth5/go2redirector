@@ -234,6 +234,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			core.LogDebug.Printf("post to keyword API, TODO")
 		case "GET":
 			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Cache-Control", "max-age=60")
 			w.WriteHeader(http.StatusFound)
 
 			data, err := json.Marshal(core.LinkDataBase.Lists)
