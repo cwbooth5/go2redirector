@@ -245,8 +245,12 @@ func (ll *ListOfLinks) GetRedirectURL() string {
 		return TopLink(*ll).URL
 	case RedirectToRandom:
 		// Just pick a random link under this list of links.
-		randURL := ll.Links[rand.Intn(len(ll.Links))]
-		return fmt.Sprintf("%v", randURL.URL)
+		temp := []*Link{}
+		for _, v := range ll.Links {
+			temp = append(temp, v)
+		}
+		randURL := temp[rand.Intn(len(temp))]
+		return fmt.Sprintf("%s", randURL.URL)
 	case RedirectToList:
 		return fmt.Sprintf("%s/.%s", ListenURL(), ll.Keyword)
 	default:
