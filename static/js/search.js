@@ -46,8 +46,6 @@ const displayKeywords = (keywords) => {
     const htmlString = keywords
         .map((keyword) => {
           if (keyword[1] > 1) {
-
-          
             return `
             <li class="list-inline-item">
                 <a class="go2keyword go2keyword-small" href="/.${keyword[0]}" title="${keyword[1]} links" role="button">go2/${keyword[0]}</a><sup>${keyword[1]}</sup>
