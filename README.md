@@ -8,6 +8,8 @@ The secondary function is to provide a place to curate lists of the most up-to-d
 
 If users want to search for information on Mars, they could type `go2 mars` in their browser's URL/search bar. This could redirect directly to a link or a list of links about the planet. Imagine there are multiple links or articles about Mars which exist on this list. How could a user get more information on the moon Phobos, going directly to it in one search? List curators could *tag* one of the links in the list with `phobos`. Now users can type `go2 mars/phobos` in their URL/search bar. That link has now become the canonical redirect for anyone looking for more information on this moon of Mars.
 
+## Try out a [DEMO](https://go2redirector.us.to/)
+
 ## Usage
 
 The go2 redirector follows a Wikipedia-like model of community-driven addition, deletion, and curation of data. If users collectively agree on what keywords mean and in turn agree on what the list for that keyword should be, the result is the group's most accurate understanding of these mnemonic keywords at any given moment. The more people who use the redirector, the more editors you have keeping things up to date.
