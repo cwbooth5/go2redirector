@@ -13,6 +13,9 @@
     <!-- easiest way to not have a favicon -->
     <link rel="icon" href="data:,">
 
+    {{/* <script type="text/javascript" src="/static/js/jquery.min.js"></script> */}}
+    {{/* <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>  */}}
+
     <style type="text/css">
 
     @font-face {
@@ -240,18 +243,6 @@
 
 </head>
 <body>
-    <script>
-        window.addEventListener('load', function() {
-            focusinput();
-        })
-        function focusinput() {
-            var e = document.getElementById("go2input");
-            {{/* only focus on the input if it is present */}}
-            if (e != null) {
-                e.focus();
-            }
-        }
-    </script>
     {{ $thislist := .GetMyList .Keyword }}
     <div class="container-fluid">
         <div class="row">
@@ -260,10 +251,10 @@
                     <div>
                       <a href="/" title="Redirector home" id="titletext">{{ .RedirectorName }}/</a>
                     </div>
-                    {{ if or .KeywordExists .Keyword }}<p class="go2keyword go2keyword-large">{{ .Keyword }}</p>{{ else }}<form id="go2outerform" class="form-control" action="/"><input id="go2input" aria-label="Large" aria-describedby="inputGroup-sizing-sm" type="text" name="keyword" size="12" value=""/></form>{{ end }}
+                    {{ if or .KeywordExists .Keyword }}<p class="go2keyword go2keyword-large">{{ .Keyword }}</p>{{ else }}<form id="go2outerform" class="form-control" action="/"><input id="go2input"  autocomplete="off" aria-label="Large" aria-describedby="inputGroup-sizing-sm" type="text" name="keyword" size="12" value=""/></form>{{ end }}
                   </div>
-            </div>
 
+            </div>
 
         </div>
         <nav aria-label="breadcrumb">

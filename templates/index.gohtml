@@ -20,7 +20,7 @@
                     {{- if ne .ID 1 }}
                       <tr>
                         <td><a href="/.{{ index .Lists 0 }}" class="go2keyword go2keyword-small" title="{{ index .Lists 0 }}">{{ index .Lists 0 }}</a></td>
-                        <td>{{ if .Special }}{{ .Title }}{{ else }}<a href="/.{{ index .Lists 0 }}"><span>{{ .Title }}</span></a>{{ end }} </td>
+                        <td>{{ if .Special }}<a title="{{ .URL }}">{{ .Title }}</a>{{ else }}<a href="/.{{ index .Lists 0 }}"><span>{{ .Title }}</span></a>{{ end }} </td>
                         <td><a role="button" class="btn btn-outline-secondary btn-sm" title="Edit link #{{ .ID }}" href="/_link_/{{ .ID }}?returnto={{ index .Lists 0 }}">edit</a></td>
                       </tr>
                     {{- end }}
@@ -46,7 +46,7 @@
                   {{ range .LinkDB.LinksByAtime 5 }}
                       {{ if ne .ID 1 }}
                     <tr>
-                      <td>{{ if .Special }}{{ .Title }}{{ else }}<a href="{{ .URL }}"><span>{{ .Title }}</span></a>{{ end }}</td>
+                      <td>{{ if .Special }}<a title="{{ .URL }}">{{ .Title }}</a>{{ else }}<a href="{{ .URL }}"><span>{{ .Title }}</span></a>{{ end }}</td>
                       <td><span class="go2keyword go2keyword-small">{{ .Lists }}</span></td>
                       <td><a role="button" class="btn btn-outline-secondary btn-sm" title="Edit link #{{ .ID }}" href="/_link_/{{ .ID }}?returnto={{ index .Lists 0 }}">edit</a></td>
                     </tr>
@@ -58,20 +58,24 @@
         </div>
     </div>
     <h4>All Lists</h4>
-    <div>
-        {{ range .LinkDB.TopLists -1 }}
-        {{ $length := len .Links }}
-        {{ if gt $length 1 }}
-        {{/* <div class="row"> */}}
-          <a class="go2keyword go2keyword-small" href="/.{{ .Keyword }}" title="{{ .Clicks }} clicks, {{ $length }} links" role="button">{{ $.RedirectorName }}/{{ .Keyword }}</a><sup>{{ $length }}</sup>
-        {{/* </div> */}}
-        {{ else }}
-        {{/* <div class="row"> */}}
-          <a class="go2keyword go2keyword-small" href="/.{{ .Keyword }}" title="{{ .Clicks }} clicks" role="button">{{ $.RedirectorName }}/{{ .Keyword }}</a>
-        {{/* </div> */}}
-        {{ end }}
+    <ul id="keywordslist" class="list-inline"></ul>
 
-        {{ end }}
+    <div>
+        {{/* keeping this in here just in case we want to bring it back quickly */}}
+        {{/* {{ range .LinkDB.TopLists -1 }} */}}
+        {{/* {{ $length := len .Links }} */}}
+        {{/* {{ if gt $length 1 }} */}}
+        {{/* <div class="row"> */}}
+          {{/* <a class="go2keyword go2keyword-small" href="/.{{ .Keyword }}" title="{{ .Clicks }} clicks, {{ $length }} links" role="button">{{ $.RedirectorName }}/{{ .Keyword }}</a><sup>{{ $length }}</sup> */}}
+        {{/* </div> */}}
+        {{/* {{ else }} */}}
+        {{/* <div class="row"> */}}
+          {{/* <a class="go2keyword go2keyword-small" href="/.{{ .Keyword }}" title="{{ .Clicks }} clicks" role="button">{{ $.RedirectorName }}/{{ .Keyword }}</a> */}}
+        {{/* </div> */}}
+        {{/* {{ end }} */}}
+
+        {{/* {{ end }} */}}
     </div>
 </div>
+<script type="text/javascript" src="/static/js/search.js"></script>
 {{ end }}
