@@ -387,6 +387,8 @@ func main() {
 
 	go core.PruneExpiringLinks()
 
+	go core.CheckpointDB("300s")
+
 	// MakeStuff()
 
 	p := fmt.Sprintf("%s:%d", core.ListenAddress, core.ListenPort)

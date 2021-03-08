@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/httputil"
 	"strconv"
 	"strings"
 	"time"
@@ -34,12 +33,13 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 		needing a special response - like a redirect to a page as opposed to JSON and a 202.
 		It will be a Form element key of "internal" with any non-null value.
 	*/
-	core.LogDebug.Printf("API request URL: %s\n", r.URL.Path)
-	requestDump, err := httputil.DumpRequest(r, true)
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println(string(requestDump))
+	// core.LogDebug.Printf("API request URL: %s\n", r.URL.Path)
+	// requestDump, err := httputil.DumpRequest(r, true)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
+	// fmt.Println(string(requestDump))
+	var err error
 
 	// Classification of API paths
 
@@ -50,7 +50,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "POST":
 			r.ParseForm()
-			core.LogDebug.Println("Incoming POST fields/values:")
+			//core.LogDebug.Println("Incoming POST fields/values:")
 			for k, v := range r.Form {
 				fmt.Printf("%s: %s\n", k, v)
 				if k == "internal" && v[0] != "" {

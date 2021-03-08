@@ -73,7 +73,23 @@ func TopLink(ll ListOfLinks) *Link {
 func Shutdown() {
 	//TODO: actual cleanup code. dump db to disk
 	LogInfo.Println("Signal caught. Shutting down...")
-	LinkDataBase.Export()
+	LinkDataBase.Export(GodbFileName)
+}
+
+// CheckpointDB saves a copy of the link database at a provided interval (a time duration string).
+func CheckpointDB(duration string) {
+	fileName := fmt.Sprintf("%s.bak", GodbFileName)
+	d, err := time.ParseDuration(duration)
+	if err != nil {
+		LogError.Fatalf("Specified duration of '%s' could not be parsed\n", duration)
+	}
+	for {
+		err := LinkDataBase.Export(fileName)
+		if err != nil {
+			LogError.Fatalf("DB checkpoint to file '%s' failed. %s", fileName, err)
+		}
+		time.Sleep(d)
+	}
 }
 
 // rotateSlice adds val at s[0], rotating all existing elements 1 position rightward

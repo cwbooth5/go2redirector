@@ -344,14 +344,17 @@ func (d *LinkDatabase) Import(filename string) {
 }
 
 // export the entire DB into a JSON file on disk.
-func (d *LinkDatabase) Export() error {
+func (d *LinkDatabase) Export(f string) error {
 	file, err := json.Marshal(*d)
 	if err != nil {
 		fmt.Println("JSON marshal error:", err)
 		return err
 	}
-	ioutil.WriteFile(GodbFileName, file, 0644)
-	LogInfo.Println("Link DB exported to disk.")
+	err = ioutil.WriteFile(f, file, 0644)
+	if err != nil {
+		LogError.Fatal(err)
+	}
+	// LogInfo.Printf("Link DB exported to %s.\n", f)
 	return err
 }
 
