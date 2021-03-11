@@ -2,9 +2,11 @@ package core
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -16,6 +18,22 @@ var (
 	LogError *log.Logger
 	LogDebug *log.Logger
 )
+
+// ConfigureLogging will set debug logging up with the -d flag when this program is run.
+func ConfigureLogging(debug bool, logFile string) {
+	file, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+	LogInfo = log.New(file, "INFO: ", log.Ldate|log.Ltime|log.Lmsgprefix)
+	LogError = log.New(file, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile|log.Lmsgprefix)
+	if debug {
+		LogDebug = log.New(os.Stdout, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile|log.Lmsgprefix)
+	} else {
+		LogDebug = log.New(os.Stdout, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile|log.Lmsgprefix)
+		LogDebug.SetOutput(ioutil.Discard)
+	}
+}
 
 /*
 	Utility functions
@@ -207,7 +225,7 @@ func PrintList(ll ListOfLinks) {
 	typeOF := v.Type()
 
 	for i := 0; i < v.NumField(); i++ {
-		fmt.Printf("Field: %s\tValue: %v\n", typeOF.Field(i).Name, v.Field(i).Interface())
+		LogDebug.Printf("Field: %s\tValue: %v\n", typeOF.Field(i).Name, v.Field(i).Interface())
 	}
 }
 
@@ -216,7 +234,7 @@ func PrintList(ll ListOfLinks) {
 func DestroyLink(l *Link) {
 	for _, list := range l.Lists {
 		lol := LinkDataBase.Lists[list]
-		LogDebug.Printf("Decoupling link %d from %v\n", l.ID, lol)
+		LogInfo.Printf("Decoupling link %d from %v\n", l.ID, lol)
 		LinkDataBase.Decouple(lol, l)
 	}
 	delete(LinkDataBase.Links, l.ID) // Remove link object entirely

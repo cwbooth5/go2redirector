@@ -347,7 +347,7 @@ func (d *LinkDatabase) Import(filename string) {
 func (d *LinkDatabase) Export(f string) error {
 	file, err := json.Marshal(*d)
 	if err != nil {
-		fmt.Println("JSON marshal error:", err)
+		LogError.Println("JSON marshal error:", err)
 		return err
 	}
 	err = ioutil.WriteFile(f, file, 0644)
@@ -399,9 +399,12 @@ func (d *LinkDatabase) Decouple(ll *ListOfLinks, linkObj *Link) {
 	linkObj.Mtime = time.Now().UTC()
 	linkObj.Lists = updatedMemberships
 
+	LogInfo.Printf("Link ID %d has been decoupled from keyword '%s'\n", linkObj.ID, ll.Keyword)
+
 	// If the link holds no memberships, it is deleted from the database.
 	if len(linkObj.Lists) == 0 {
 		delete(d.Links, linkObj.ID)
+		LogInfo.Printf("Link %d has been removed (no remaining list memberships)", linkObj.ID)
 	}
 }
 
@@ -425,7 +428,7 @@ func (d *LinkDatabase) Couple(ll *ListOfLinks, linkObj *Link) {
 	if !present { // do not add membership if it is already present
 		linkObj.Lists = append(linkObj.Lists, ll.Keyword)
 	}
-
+	LogInfo.Printf("Link ID %d has been coupled with keyword '%s'\n", linkObj.ID, ll.Keyword)
 	ll.Links[linkObj.ID] = linkObj
 }
 

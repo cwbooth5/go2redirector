@@ -109,6 +109,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			if !exists {
 				// We need to create the keyword and link.
 				ll = core.MakeNewList(outboundLink.Keyword, inboundLink)
+				core.LogInfo.Printf("New keyword created: '%s'\n", outboundLink.Keyword)
 			}
 
 			// If they were decoupling the link, do it now and return
@@ -125,7 +126,6 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			// if _, exists := core.LinkDataBase.Links[id]; !exists && id == 0 {
 			if id == 0 {
 				core.LogDebug.Printf("POST is adding a new link.")
 				// We are editing an existing link.
@@ -133,7 +133,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 				lid, _ := core.LinkDataBase.CommitNewLink(inboundLink)
 				// inbound link has its new linkid now.
 				outboundLink.ID = lid
-				core.LogDebug.Printf("New link with ID %d was added to the DB.\n", lid)
+				core.LogInfo.Printf("New link with ID %d was added to the DB.\n", lid)
 				ll.TagBindings[lid] = outboundLink.Tag
 			} else {
 				// tag binding
@@ -186,7 +186,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(outboundLink)
 		case "GET":
 			// 200 OK or 404
-			fmt.Println("this is a GET..")
+			core.LogDebug.Println("this is a GET..")
 
 		}
 
@@ -197,7 +197,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			r.ParseForm()
 			core.LogDebug.Println("Incoming POST fields/values:")
 			for k, v := range r.Form {
-				fmt.Printf("%s: %s\n", k, v)
+				core.LogDebug.Printf("%s: %s\n", k, v)
 				if k == "internal" && v[0] != "" {
 					internal = true
 				}

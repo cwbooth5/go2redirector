@@ -34,7 +34,9 @@ JSON=$(grep -v '^ *#' << EOF
     "link_log_new_keywords": true,
 # A given special keyword can have logging enabled and the capacity of the log is determined by this variable.
 # This controls the number of recent usages shown for any given special redirects.
-    "link_log_capacity": 10
+    "link_log_capacity": 10,
+# This is a path to a log file for the redirector.
+    "log_file": "redirector.log"
 }
 EOF
 )

@@ -490,10 +490,8 @@ func RenderListPage(r *http.Request) (string, ModelIndex, error) {
 	if pth.Keyword.IsSpecial() {
 		model.KeywordBeingEdited = false // abusing this to get another boolean in the template
 		model.UsageLog = core.LinkLog[pth.Keyword]
-		// err = RenderTemplate(w, "listspecial.gohtml", &model)
 		tmpl = "listspecial.gohtml"
 	} else {
-		// err = RenderTemplate(w, "list.gohtml", &model)
 		tmpl = "list.gohtml"
 	}
 

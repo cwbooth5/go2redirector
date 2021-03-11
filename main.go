@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"html"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -120,12 +119,10 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 			tmpl, model, err = gohttp.RenderListPage(r) // force to the list edit page
 		} else {
 			// It's a real redirect, follow the list's behavior now.
-
 			lnk := core.LinkDataBase.GetLink(-1, ll.GetRedirectURL())
 			if lnk.Special() {
 				// They asked to be redirected, but didn't provide that second field.
 				msg := fmt.Sprintf("The redirect URL for this list requires a substitution parameter. Try '%s/(pattern)'.", pth.Keyword)
-				// http.Error(w, msg, http.StatusBadRequest)
 				tmpl, model, err = gohttp.RenderListPage(r)
 				model.ErrorMessage = msg
 				core.LogDebug.Println("Link is special, errors, we are returning....")
@@ -133,6 +130,7 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 			}
 			lnk.Clicks++
 			core.LogDebug.Printf("Bare keyword redirect on '%s', clicks: %d\n", ll.Keyword, lnk.Clicks)
+			core.LogInfo.Printf("Path '%s' redirect rendered: %s\n", pth.Keyword, ll.GetRedirectURL())
 			// Note we need to redirect THEN destroy the link.
 			redirect = true
 			http.Redirect(w, r, ll.GetRedirectURL(), 307)
@@ -170,6 +168,7 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 				if !l.Special() {
 					l.Clicks++
 					core.LogDebug.Println("Redirecting based on tag")
+					core.LogInfo.Printf("Path '%s/%s' redirect rendered: %s\n", pth.Keyword, pth.Tag, l.URL)
 					http.Redirect(w, r, l.URL, 307)
 					redirect = true
 					if l.Dtime == core.BurnTime {
@@ -191,6 +190,7 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 				url, complete, err = gohttp.RenderSpecial(r, []string{pth.Tag}, l, ll)
 				if complete {
 					// substitution complete, they are redirected to the URL.
+					core.LogInfo.Printf("Path '%s/%s' redirect rendered: %s\n", pth.Keyword, pth.Tag, url)
 					http.Redirect(w, r, url, 307)
 					redirect = true
 					if l.Dtime == core.BurnTime {
@@ -208,6 +208,7 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 						core.LogDebug.Printf("Tag '%s' was found on list '%s'\n", pth.Tag, ll.Keyword)
 						lnk := ll.Links[id]
 						lnk.Clicks++
+						core.LogInfo.Printf("Path '%s/%s' redirect rendered: %s\n", pth.Keyword, pth.Tag, lnk.URL)
 						http.Redirect(w, r, lnk.URL, 307) //TODO if this needs to do a replacement...we need it here.
 						redirect = true
 						if lnk.Dtime == core.BurnTime {
@@ -236,7 +237,7 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 						// We have a link URL now at that tag on this list.
 						url, complete, err = gohttp.RenderSpecial(r, []string{pth.Params[0]}, l, ll)
 						if complete {
-							core.LogDebug.Printf("Tag '%s' lookup url: %s\n", pth.Tag, url)
+							core.LogInfo.Printf("Path '%s/%s' redirect rendered: %s\n", pth.Keyword, pth.Tag, url)
 							l.Clicks++
 							http.Redirect(w, r, url, 307)
 							redirect = true
@@ -328,11 +329,6 @@ func init() {
 		gohttp.Templates[filepath.Base(layout)] = template.Must(template.ParseFiles(layout, "templates/base.gohtml"))
 	}
 
-	// logging setup
-	core.LogInfo = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lmsgprefix)
-	core.LogError = log.New(os.Stdout, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile|log.Lmsgprefix)
-	core.LogDebug = log.New(os.Stdout, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile|log.Lmsgprefix)
-
 	// handle ctrl+c and sigterm - try to shut down gracefully and dump the db
 	shutdownChan := make(chan os.Signal, 1)
 
@@ -366,16 +362,20 @@ func main() {
 	core.LevDistRatio = go2Config.LevDistRatio
 	core.LinkLogNewKeywords = go2Config.LinkLogNewKeywords
 	core.LinkLogCapacity = go2Config.LinkLogCapacity
+	core.LogFile = go2Config.LogFile
 
 	var importPath string
+	var debugMode bool
 	flag.StringVar(&importPath, "i", core.GodbFileName, "Existing go2 redirector JSON DB to import")
+	flag.BoolVar(&debugMode, "d", false, "Debug mode, set this to send debug logging to STDOUT")
 	flag.Parse()
+
+	core.ConfigureLogging(debugMode, core.LogFile)
 
 	core.LogInfo.Printf("Loading link database from file: %s", importPath)
 	core.LinkDataBase.Import(importPath)
 
-	s := fmt.Sprintf("Server starting with arguments: %s:%d", core.ListenAddress, core.ListenPort)
-	core.LogInfo.Println(s)
+	core.LogInfo.Println(fmt.Sprintf("Server starting with arguments: %s:%d", core.ListenAddress, core.ListenPort))
 
 	fs := http.FileServer(http.Dir("./static"))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
