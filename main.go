@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"html"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -362,7 +363,7 @@ func main() {
 	core.LevDistRatio = go2Config.LevDistRatio
 	core.LinkLogNewKeywords = go2Config.LinkLogNewKeywords
 	core.LinkLogCapacity = go2Config.LinkLogCapacity
-	core.LogFile = go2Config.LogFile
+	var logFile = go2Config.LogFile
 
 	var importPath string
 	var debugMode bool
@@ -370,7 +371,11 @@ func main() {
 	flag.BoolVar(&debugMode, "d", false, "Debug mode, set this to send debug logging to STDOUT")
 	flag.Parse()
 
-	core.ConfigureLogging(debugMode, core.LogFile)
+	file, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+	core.ConfigureLogging(debugMode, file)
 
 	core.LogInfo.Printf("Loading link database from file: %s", importPath)
 	core.LinkDataBase.Import(importPath)
@@ -392,7 +397,7 @@ func main() {
 	// MakeStuff()
 
 	p := fmt.Sprintf("%s:%d", core.ListenAddress, core.ListenPort)
-	err := http.ListenAndServe(p, nil)
+	err = http.ListenAndServe(p, nil)
 	if err != nil {
 		core.LogError.Fatal(err)
 	}

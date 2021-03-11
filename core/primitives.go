@@ -379,6 +379,7 @@ func newEmptyLink(d *LinkDatabase, incomingURL string, title string, keyword Key
 // Decouple a list of links and a specific link.
 // If the removal of a link from the list results in a zero-length list, the list is deleted.
 func (d *LinkDatabase) Decouple(ll *ListOfLinks, linkObj *Link) {
+	LogInfo.Printf("Link ID %d has been decoupled from keyword '%s'\n", linkObj.ID, ll.Keyword)
 	delete(ll.Links, linkObj.ID)
 
 	// If the length of the list now is zero, the list should be removed entirely.
@@ -399,19 +400,17 @@ func (d *LinkDatabase) Decouple(ll *ListOfLinks, linkObj *Link) {
 	linkObj.Mtime = time.Now().UTC()
 	linkObj.Lists = updatedMemberships
 
-	LogInfo.Printf("Link ID %d has been decoupled from keyword '%s'\n", linkObj.ID, ll.Keyword)
-
 	// If the link holds no memberships, it is deleted from the database.
 	if len(linkObj.Lists) == 0 {
-		delete(d.Links, linkObj.ID)
 		LogInfo.Printf("Link %d has been removed (no remaining list memberships)", linkObj.ID)
+		delete(d.Links, linkObj.ID)
 	}
 }
 
 // Couple a an existing link's pointer to a list of links. The list can be existing or will be committed here if new.
 // When you combine a list and a link, the list gets this link included and the link gets its memberships updated.
 func (d *LinkDatabase) Couple(ll *ListOfLinks, linkObj *Link) {
-
+	LogInfo.Printf("Link ID %d has been coupled with keyword '%s'\n", linkObj.ID, ll.Keyword)
 	linkObj.Mtime = time.Now().UTC()
 
 	if _, exists := d.Lists[ll.Keyword]; !exists {
@@ -428,7 +427,7 @@ func (d *LinkDatabase) Couple(ll *ListOfLinks, linkObj *Link) {
 	if !present { // do not add membership if it is already present
 		linkObj.Lists = append(linkObj.Lists, ll.Keyword)
 	}
-	LogInfo.Printf("Link ID %d has been coupled with keyword '%s'\n", linkObj.ID, ll.Keyword)
+
 	ll.Links[linkObj.ID] = linkObj
 }
 

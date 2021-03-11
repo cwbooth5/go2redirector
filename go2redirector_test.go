@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/cwbooth5/go2redirector/core"
@@ -276,4 +277,8 @@ func TestConfigLoad(t *testing.T) {
 	if e == nil {
 		t.Error("this config was not supposed to load (malformed")
 	}
+}
+
+func init() {
+	core.ConfigureLogging(true, os.Stdout)
 }

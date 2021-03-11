@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -20,13 +21,9 @@ var (
 )
 
 // ConfigureLogging will set debug logging up with the -d flag when this program is run.
-func ConfigureLogging(debug bool, logFile string) {
-	file, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	if err != nil {
-		log.Fatal(err)
-	}
-	LogInfo = log.New(file, "INFO: ", log.Ldate|log.Ltime|log.Lmsgprefix)
-	LogError = log.New(file, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile|log.Lmsgprefix)
+func ConfigureLogging(debug bool, w io.Writer) {
+	LogInfo = log.New(w, "INFO: ", log.Ldate|log.Ltime|log.Lmsgprefix)
+	LogError = log.New(w, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile|log.Lmsgprefix)
 	if debug {
 		LogDebug = log.New(os.Stdout, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile|log.Lmsgprefix)
 	} else {
