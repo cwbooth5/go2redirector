@@ -250,7 +250,7 @@
                     <div>
                       <a href="/" title="Redirector home" id="titletext">{{ .RedirectorName }}/</a>
                     </div>
-                    {{ if or .KeywordExists .Keyword }}<p class="go2keyword go2keyword-large">{{ .Keyword }}</p>{{ else }}<form id="go2outerform" class="form-control" action="/"><input id="go2input"  autocomplete="off" aria-label="Large" aria-describedby="inputGroup-sizing-sm" type="text" name="keyword" size="12" value=""/></form>{{ end }}
+                    {{ if or .KeywordExists .Keyword }}<p class="go2keyword go2keyword-large">{{ .Keyword }}</p>{{ else }}<form id="go2outerform" class="form-control" action="/"><input id="go2input" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" aria-label="Large" aria-describedby="inputGroup-sizing-sm" type="text" name="keyword" size="12" value=""/></form>{{ end }}
                   </div>
 
             </div>
