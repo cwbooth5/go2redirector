@@ -29,7 +29,7 @@ changelog:
 dockers:
   - 
     image_templates:
-    - "docker.pkg.github.com/cwbooth5/go2redirector:{{ .Tag }}"
+    - "docker.pkg.github.com/cwbooth5/go2redirector/go2redirector:{{ .Tag }}"
     extra_files:
     - main.go 
     - go.mod 
