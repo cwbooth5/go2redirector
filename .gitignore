@@ -20,3 +20,4 @@
 
 godb.json*
 /go2config.json
+dist/
