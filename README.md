@@ -1,5 +1,7 @@
 # The Go2 Redirector
 
+[![Build Status](https://github.com/cwbooth5/go2redirector/actions/workflows/go.yml/badge.svg)](https://github.com/cwbooth5/go2redirector/actions/workflows/go.yml)
+
 This is a mnemonic URL database, redirector, and search engine.
 
 The primary function of this tool is to HTTP redirect users straight to a URL associated with the keyword they were accessing. URLs are difficult to remember and type, but they are easier to use if named concisely. Links are named or **tagged** and placed into lists identified by **keywords**. These keywords are well-known, intuitive strings the users come up with which describe the list or link being sought after.
