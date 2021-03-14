@@ -72,10 +72,10 @@
               {{ $thistag }}
               </td>
               <td>
-                {{ if .Special }}<a title="{{ .URL }}">{{ .Title }}</a>{{ else }}<a title="{{ .URL }}" href="{{ .URL }}"><span>{{ .Title }}</span></a>{{ end }}
+                {{ if .Special }}<a title="{{ .URL }}">{{ .Title }}</a>{{ else }}<a title="{{ .URL }}" href="{{ .URL }}"><span>{{ .Title }}</span></a>{{ end }}<br>
                 {{ $also := .AKA }}
                 {{ range $also }}
-                <a class="fineprint" title="{{ .URL }}" href="/_link_/{{ .ID }}?returnto={{ $.Keyword }}"><p class="font-italic">"{{ .Title }}"</p><br></a>
+                <a title="{{ .URL }}">"{{ .Title }}"</a><br>
                 {{ end }}
               </td>
               <td><span class="go2keyword go2keyword-small">{{ .Lists }}</span></td>

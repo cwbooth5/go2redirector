@@ -1,0 +1,222 @@
+@font-face {
+    font-family: 'Muli';
+    src: url('/static/font/muli.woff2') format('woff2');
+    font-style: normal;
+    font-weight: 400;
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+body {
+    background-color: #22252a;
+    color: #8a8d93;
+    font-family: 'Muli';
+    font-size: 1rem;
+    font-weight: 400;
+}
+
+#titletext {
+    /* color: #a5a7ab; */
+    /* color: #E95F71 !important; */
+    color: #fff;
+    font-size: 30px;
+}
+
+a {
+    color: #DB6574;
+    text-decoration: none;
+    transition: all 0.3s;
+}
+
+a:hover {
+    color: #2f93ea;
+    text-decoration: underline;
+}
+
+code {
+    color: #d09455;
+}
+
+.card {
+    background-color: #2d3035;
+    border: 1px solid #34373D;
+    border-radius: 0;
+}
+
+.card-header {
+    border-bottom: 1px solid #34373d;
+    background-color: rgba(0,0,0,0.03);
+}
+
+.text-nowrap {
+    white-space: nowrap;
+}
+
+.form-control {
+    display: block;
+    color: #979a9f;
+    background: transparent;
+    border: 1px solid #444951;
+    border-radius: 0;
+}
+
+.form-control:focus {
+    color: #979a9f;
+    border-color: #DB6574;
+    background-color: rgba(0,0,0,0);
+    outline: none;
+    box-shadow: none;
+}
+
+.form-control:disabled {
+    background: #e9ecef;
+}
+
+#go2outerform {
+    padding-left: 0px;
+    border: none;
+}
+
+#go2input {
+    color: #4dc5d9 !important;
+    background-color: transparent;
+    outline: none;
+    box-shadow: none;
+    line-height: 30px;
+    border: 1px solid #444951;
+    padding-left: 0px;
+    margin-left: 3px;
+    font-size: 25px;
+}
+
+.go2keyword {
+    color: #4dc5d9 !important;
+}
+
+.go2keyword-large {
+    outline: none;
+    box-shadow: none;
+    line-height: 30px;
+    border: none;
+    padding-left: 0px;
+    padding-top: 7px;
+    font-size: 30px;
+}
+
+.go2keyword-small {
+    font-size: inherit;
+}
+
+.table td {
+    border-color: #343a40;
+}
+
+.list-group-item {
+    background-color: transparent;
+    border: 0px;
+}
+
+#list-group-item-nopad {
+    padding-left: 0rem;
+    background-color: transparent;
+    border: 0px;
+    display: block;
+}
+
+.list-inline {
+    padding-left: 10px;
+}
+
+.member-list-item {
+    color: #7127AC !important;
+}
+
+.behavior-selector {
+    margin-bottom: 0px;
+}
+
+.input-group-text {
+    background-color: transparent;
+    border: none;
+    color: #fff;
+}
+
+.btn-primary {
+    background-color: #d09455;
+    border-color: #d09455;
+}
+
+.btn-primary:hover {
+    background-color: #55a4b1;
+    border-color: #55a4b1;
+}
+
+.btn-primary:not(:disabled):not(.disabled).active, .btn-primary:not(:disabled):not(.disabled):active, .show > .btn-primary.dropdown-toggle {
+    background-color: #d44658;
+    border-color: #d13c4f;
+}
+
+.btn-primary:not(:disabled):not(.disabled).active:focus, .btn-primary:not(:disabled):not(.disabled):active:focus, .show > .btn-primary.dropdown-toggle:focus {
+    box-shadow: 0 0 0 .2rem rgba(219,101,116,0.5);
+}
+
+.btn-primary.focus {
+    box-shadow: 0 0 0 .2rem rgba(219,101,116,0.5);
+}
+
+.btn-block-go2 {
+    border-radius: 0px;
+}
+
+.btn-sm {
+    display: initial;
+}
+
+.breadcrumb {
+    background-color: inherit;
+    padding-left: 0px;
+    padding-right: 0px;
+    padding-bottom: 0px;
+    padding-top: 0px !important;
+    margin-bottom: 0px !important;
+}
+
+.badge-go2 {
+    color: #fff;
+    background-color: #2e3944;
+}
+
+.table thead th {
+    border-bottom: 0px;
+    border-top: 0px;
+}
+
+.table {
+    color: #8a8d93;
+}
+
+select.form-control:not([size]):not([multiple]) {
+    height: calc(2.25rem + 2px);
+    background-color: #22252a;
+}
+
+select {
+    margin: 0;
+    font-family: 'Muli';
+    font-size: 1rem;
+    font-weight: 400;
+}
+
+.diag {
+    color: #22252a;
+}
+
+.visually-hidden {
+    border: 0!important;
+    clip: rect(0 0 0 0)!important;
+    height: 1px!important;
+    margin: -1px!important;
+    overflow: hidden!important;
+    padding: 0!important;
+    position: absolute!important;
+    width: 1px!important;
+}
