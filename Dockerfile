@@ -32,4 +32,4 @@ RUN ./install.sh
 
 EXPOSE 8080
 
-CMD ["/home/gouser/go2redirector"]
+CMD ["/home/gouser/go2redirector", "-l", "0.0.0.0"]

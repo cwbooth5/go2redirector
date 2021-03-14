@@ -367,8 +367,12 @@ func main() {
 
 	var importPath string
 	var debugMode bool
+	var listenAddress string
+	var listenPort int
 	flag.StringVar(&importPath, "i", core.GodbFileName, "Existing go2 redirector JSON DB to import")
 	flag.BoolVar(&debugMode, "d", false, "Debug mode, set this to send debug logging to STDOUT")
+	flag.StringVar(&listenAddress, "l", core.ListenAddress, "local TCP address to listen on, overrides LocalListenAddress in the config file")
+	flag.IntVar(&listenPort, "p", core.ListenPort, "local TCP port to listen on, overrides LocalListenPort in the config file")
 	flag.Parse()
 
 	file, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
@@ -396,7 +400,7 @@ func main() {
 
 	// MakeStuff()
 
-	p := fmt.Sprintf("%s:%d", core.ListenAddress, core.ListenPort)
+	p := fmt.Sprintf("%s:%d", listenAddress, listenPort)
 	err = http.ListenAndServe(p, nil)
 	if err != nil {
 		core.LogError.Fatal(err)
