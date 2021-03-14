@@ -382,7 +382,10 @@ func main() {
 	core.ConfigureLogging(debugMode, file)
 
 	core.LogInfo.Printf("Loading link database from file: %s", importPath)
-	core.LinkDataBase.Import(importPath)
+	err = core.LinkDataBase.Import(importPath)
+	if err != nil {
+		core.LogError.Fatalf("Could not load link database from file %s\n", importPath)
+	}
 
 	core.LogInfo.Println(fmt.Sprintf("Server starting with arguments: %s:%d", core.ListenAddress, core.ListenPort))
 

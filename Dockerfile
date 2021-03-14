@@ -30,15 +30,22 @@ RUN mkdir /lib64 && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2
 RUN addgroup -S gouser && adduser -S gouser -G gouser
 USER gouser
 WORKDIR /home/gouser
-RUN mkdir -p static templates
+RUN mkdir -p static templates data
 COPY static ./static
-COPY templates/ ./templates
+COPY templates ./templates
 COPY README.md /home/gouser/
 
 # artifacts from the builder container
 COPY --from=builder /root/go2redirector .
 COPY --from=builder /root/godb.json .
 COPY --from=builder /root/go2config.json .
+
+# Move the godb.json file to a volume mount point so it can persist outside the container.
+RUN mv /home/gouser/godb.json /home/gouser/data/
+RUN ln -s /home/gouser/data/godb.json godb.json
+
+# Normally INFO and ERROR-level stuff goes to this file. Send all to stdout.
+RUN ln -sf /dev/stdout /home/gouser/redirector.log
 
 EXPOSE 8080
 CMD ["/home/gouser/go2redirector", "-l", "0.0.0.0"]

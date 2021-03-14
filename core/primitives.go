@@ -328,19 +328,23 @@ func MakeNewLinkDatabase() *LinkDatabase {
 	}
 }
 
-func (d *LinkDatabase) Import(filename string) {
+func (d *LinkDatabase) Import(filename string) error {
 	var tempdb LinkDatabase
+	var err error
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
-		LogDebug.Fatal("DB file was not found! Run the install script to create one.")
+		LogError.Println("DB file was not found! Run the install script to create one.")
+		return err
 	}
 
 	err = json.Unmarshal(data, &tempdb)
 	if err != nil {
 		LogError.Printf("json parsing error: %s", err)
+		return err
 	}
 
 	LinkDataBase = &tempdb
+	return err
 }
 
 // export the entire DB into a JSON file on disk.

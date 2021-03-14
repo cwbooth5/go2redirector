@@ -28,6 +28,31 @@ This will place a `godb.json` file on disk in the project root directory, then i
 
 The redirector needs to be compiled as the second and final step of setup. A simple `go build` in the project root should yield an executable. Run that executable with no arguments to see the redirector start, listening on an ephemeral port.
 
+### Build and Run in a Container
+
+A multi-stage `Dockerfile` is included here to ease the process of building the binary and providing a runnable container. The initial building container is huge and is thrown away in favor of a smaller alpine linux-based runtime container. There are three elements to building and running the container: building, persisting the link database, and running the container.
+
+Building the container can be done with: `docker build -t go2redirector .`
+
+If you would like to inspect the build container itself to check out/debug the build environment, you can access it by targeting the build container by name.
+
+`docker build --target builder -t go2build .`
+
+You can create a volume locally for outside-the-container persistent space for `godb.json`. This will allow your container to user the same godb every time it executes. Leave this procedure out if you do not wish to save the database between container runs.
+
+1. Create a local storage volume using `docker volume create go2`
+2. Inspect your created volume to verify it is created. `docker volume inspect go2`
+
+Now run the container, using the volume. This will run the container in daemon mode and remove it when it stops.
+
+`docker run --rm -p 8080:8080 -d -v go2:/home/gouser/data go2redirector`
+
+Note that you don't have use a volume like this. A bind mount to another existing directory would work as well.
+
+The redirector is going to be listening on `0.0.0.0:8080` inside the container, as opposed to the default of `127.0.0.1` from go2config.json (the default).
+
+To see the logs from the container, they're all redirected to stdout, so you can do a `docker logs <name of running container>`
+
 ### Browser Configuration
 
 The go2redirector should be running on `localhost:8080` now. You can do directly to that, or to make things easier, you can configure your browser with a new search keyword like `go2`.
