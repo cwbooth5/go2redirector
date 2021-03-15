@@ -5,7 +5,7 @@
 
 <div class="row">
     <!-- {{if .KeywordExists }}<h3 class="center">{{ .Keyword }}</h3>{{ end }} -->
-    <div class="col-6">
+    <div class="col-sm-6" style="margin-bottom: 10px;">
       <div class="card">
          <!-- Check here to see if this keyword exists. If so, show them the behavior change table. -->
           {{ if .KeywordExists }}
@@ -18,7 +18,7 @@
             <form action="/api/behavior/" method="POST">
               <div class="input-group behavior-selector">
                 <div class="input-group-prepend">
-                  <label class="input-group-text" for="inputGroupSelect01"><a href="/{{ .Keyword }}"><span class="go2keyword go2keyword-small">{{ .RedirectorName }}/{{ .Keyword }}</span></a>&nbsp redirects to</label>
+                  <label class="input-group-text"><a href="/{{ .Keyword }}"><span class="go2keyword go2keyword-small">{{ .RedirectorName }}/{{ .Keyword }}</span></a>&nbsp redirects to</label>
                   <input type="hidden" name="keyword" value="{{ .Keyword }}"/>
                   <input type="hidden" name="internal" value="true"/>
                 </div>
@@ -93,7 +93,7 @@
     {{ $thislist := .GetMyList .Keyword }}
     {{ $similar := $thislist.GetSimilar .Keyword }}
     {{ $count := len $similar}}
-    <div class="col-6">
+    <div class="col-sm-6" style="margin-bottom: 10px;">
       <div class="card">
         <div class="card-header">
           <h4 class="center">Similar Keywords</h4>

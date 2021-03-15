@@ -68,13 +68,13 @@ window.addEventListener('load', function() {
 </script>
 
 <div class="row">
-  <div class="col-6">
+  <div class="col-sm-6" style="margin-bottom: 10px;">
   <div class="card">
     <div class="card-header">
- 
+
       {{ if .LinkExists }}<h4>Edit Link Details</h4>{{ else }}<h4>Enter New Link Details</h4>{{ end }}
       {{/* {{ .RedirectorName }}/{{ if ne .Keyword "" }}{{ .Keyword }}{{ else }}{{ index .LinkBeingEdited.Lists 0 }}{{ end }} */}}
-  
+
     </div>
     <div class="card-body">
 
@@ -105,7 +105,7 @@ window.addEventListener('load', function() {
             <tr>
               <td>Tag</td>
               <td>
-              {{ $thislist := .GetMyList .Keyword }}              
+              {{ $thislist := .GetMyList .Keyword }}
               {{ if $thislist }}
                 {{ $thistag := $thislist.GetTag $linkid }}
                 <input type="text" name="tag" class="form-control" value="{{ $thistag }}" placeholder=""/>
@@ -218,7 +218,7 @@ window.addEventListener('load', function() {
                           {{ else }}
                         <a style="color: #4dc5d9 !important;" href="/.{{ . }}">{{ . }}</a>
                         <br>
-                
+
                     </div>
                         {{ end }}
                       {{ end }}
@@ -251,12 +251,12 @@ window.addEventListener('load', function() {
   <!-- variables table -->
   {{ $special := .LinkBeingEdited.Special }}
   {{ $thelink := .LinkBeingEdited}}
-  <div class="col-6">
+  <div class="col-sm-6" style="margin-bottom: 10px;">
     <div class="card">
       <div class="card-header"><h4>Redirect Variables</h4></div>
       <div class="card-body">
         <p>URLs can have <code>{variables}</code> within. Any URL with a variable configured has a default setting which can be overridden per-browser.
-          The default setting gets used when you don't have a local override in place. 
+          The default setting gets used when you don't have a local override in place.
         </p>
         <div class="inner">
           <form action="/_variables_/" method="POST">
