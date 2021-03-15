@@ -26,3 +26,6 @@ jobs:
 
     - name: Test
       run: go test -v
+    
+    - name: Build Container
+      run: docker build . -t go2build
