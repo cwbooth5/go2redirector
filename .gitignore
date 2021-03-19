@@ -21,3 +21,5 @@
 godb.json*
 /go2config.json
 dist/
+redirector.log
+go2redirector

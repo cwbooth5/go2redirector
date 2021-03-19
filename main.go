@@ -12,6 +12,7 @@ import (
 	"strings"
 	"syscall"
 	"text/template"
+	"time"
 
 	"github.com/cwbooth5/go2redirector/api"
 	gohttp "github.com/cwbooth5/go2redirector/http"
@@ -82,7 +83,6 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 		pth.Keyword, err = core.MakeNewKeyword(inputSplit[0])
 		if err != nil {
 			msg := fmt.Sprintf("Your keyword of '%s' was not valid. %s'", html.EscapeString(inputKeyword), err.Error())
-			// http.Error(w, msg, http.StatusBadRequest)
 			tmpl = "404.gohtml"
 			model.ErrorMessage = msg
 			return tmpl, model, redirect, err
@@ -227,7 +227,7 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 	case pth.Len() == 3:
 		// Third use case: keyord/tag/param
 		// We already know the list exists at this keyword.
-		fmt.Println("path len 3")
+		core.LogDebug.Println("path len 3")
 		// tag indicated the link we need to get a URL for.
 		var url string
 		var complete bool
@@ -311,6 +311,20 @@ func routeHappyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Run the webserver frontend. This is only done when this instance of the redirector
+// is the active member of the pair.
+func configureWebserver(a string, p int) string {
+	fs := http.FileServer(http.Dir("./static"))
+	http.Handle("/static/", http.StripPrefix("/static/", fs))
+	http.HandleFunc("/_link_/", gohttp.RouteLink)
+	http.HandleFunc("/api/", api.RouteAPI)
+	http.HandleFunc("/_db_", gohttp.RouteGetDB)
+	http.HandleFunc("/404.html", gohttp.RouteNotFound)
+	http.HandleFunc("/", routeHappyHandler) // golden happy path because why not?
+	core.LogInfo.Println(fmt.Sprintf("Server starting with arguments: %s:%d", core.ListenAddress, core.ListenPort))
+	return fmt.Sprintf("%s:%d", a, p)
+}
+
 /*
 	Initialization
 */
@@ -363,6 +377,7 @@ func main() {
 	core.LevDistRatio = go2Config.LevDistRatio
 	core.LinkLogNewKeywords = go2Config.LinkLogNewKeywords
 	core.LinkLogCapacity = go2Config.LinkLogCapacity
+	core.FailoverPeer = go2Config.FailoverPeer
 	var logFile = go2Config.LogFile
 
 	var importPath string
@@ -387,25 +402,44 @@ func main() {
 		core.LogError.Fatalf("Could not load link database from file %s\n", importPath)
 	}
 
-	core.LogInfo.Println(fmt.Sprintf("Server starting with arguments: %s:%d", core.ListenAddress, core.ListenPort))
+	core.Synchronize()
 
-	fs := http.FileServer(http.Dir("./static"))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
-	http.HandleFunc("/_link_/", gohttp.RouteLink)
-	http.HandleFunc("/api/", api.RouteAPI)
-	http.HandleFunc("/_db_", gohttp.RouteGetDB)
-	http.HandleFunc("/404.html", gohttp.RouteNotFound)
-	http.HandleFunc("/", routeHappyHandler) // golden happy path because why not?
+	updateChan := make(chan string, 1)
+	go func() {
+		for {
+			time.Sleep(2 * time.Second)
+			updateChan <- "blahblah"
+		}
+	}()
 
 	go core.PruneExpiringLinks()
-
 	go core.CheckpointDB("300s")
 
-	// MakeStuff()
+	var s string
 
-	p := fmt.Sprintf("%s:%d", listenAddress, listenPort)
-	err = http.ListenAndServe(p, nil)
-	if err != nil {
-		core.LogError.Fatal(err)
+	if core.IsActiveRedirector == false {
+		// This is the standby loop.
+		for {
+			select {
+			case out := <-updateChan:
+				fmt.Printf("got a value: %s", out)
+			case <-time.After(5 * time.Second):
+				fmt.Println("timeout hit! Assuming active role")
+				core.IsActiveRedirector = true
+				s = configureWebserver(listenAddress, listenPort)
+				err := http.ListenAndServe(s, nil)
+				if err != nil {
+					core.LogError.Fatal(err)
+				}
+			}
+		}
+	} else {
+		// This is the active execution path.
+		fmt.Println("We are starting active!")
+		s = configureWebserver(listenAddress, listenPort)
+		err := http.ListenAndServe(s, nil)
+		if err != nil {
+			core.LogError.Fatal(err)
+		}
 	}
 }

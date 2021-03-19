@@ -36,7 +36,10 @@ JSON=$(grep -v '^ *#' << EOF
 # This controls the number of recent usages shown for any given special redirects.
     "link_log_capacity": 10,
 # This is a path to a log file for the redirector.
-    "log_file": "redirector.log"
+    "log_file": "redirector.log",
+# This is an ip:port combo of the failover peer for this system. A TCP connection is used to maintain
+# state between this system and the peer. An empty string here means this system comes up active at all times.
+    "failover_peer": ""
 }
 EOF
 )

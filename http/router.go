@@ -431,14 +431,12 @@ func RenderSpecial(r *http.Request, params []string, l *core.Link, ll *core.List
 }
 
 func RenderDotPage(r *http.Request) (string, ModelIndex, error) {
-	// core.LogDebug.Println("this is the dotpage function")
 	// right now, this is a wrapper for renderListPage just in case we want to ever
 	// do something special here.
 	return RenderListPage(r)
 }
 
 func RenderListPage(r *http.Request) (string, ModelIndex, error) {
-	// core.LogDebug.Println("this is the listpage function")
 	var tmpl string
 	var model ModelIndex
 	var err error
@@ -447,8 +445,9 @@ func RenderListPage(r *http.Request) (string, ModelIndex, error) {
 
 	pth, err := core.ParsePath(r.URL.Path)
 	if err != nil {
-		// early return, they botched the path
-		return tmpl, model, err
+		core.LogError.Println(err)
+		model.ErrorMessage = err.Error()
+		return "list.gohtml", model, err
 	}
 
 	inputKeyword := r.URL.Query().Get("keyword") // only set if they entered a keyword in the input box
