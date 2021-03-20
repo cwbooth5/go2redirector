@@ -88,7 +88,7 @@ func (d LinkDatabase) ExportNetwork() error {
 func SendUpdates(ldb *LinkDatabase) {
 	for {
 		LogDebug.Println("send update called...")
-		time.Sleep(3 * time.Second)
+		time.Sleep(1 * time.Second)
 		ldb.ExportNetwork()
 	}
 }

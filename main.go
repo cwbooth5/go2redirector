@@ -427,7 +427,7 @@ func main() {
 			case incomingDB := <-updateChan:
 				core.LogDebug.Println("got a link DB update")
 				core.LinkDataBase = incomingDB
-			case <-time.After(5 * time.Second):
+			case <-time.After(2 * time.Second):
 				core.LogError.Println("Timeout hit! Active did not sync with us. Assuming ACTIVE role...")
 				core.IsActiveRedirector = true
 				// This is the standby -> active transition. Note we are loading our linkdb
