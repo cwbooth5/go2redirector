@@ -378,6 +378,7 @@ func main() {
 	core.LinkLogNewKeywords = go2Config.LinkLogNewKeywords
 	core.LinkLogCapacity = go2Config.LinkLogCapacity
 	core.FailoverPeer = go2Config.FailoverPeer
+	core.FailoverLocal = go2Config.FailoverLocal
 	var logFile = go2Config.LogFile
 
 	var importPath string

@@ -23,6 +23,7 @@ var LinkLogNewKeywords bool
 var LinkLogCapacity int
 var LogFile string
 var FailoverPeer string
+var FailoverLocal string
 
 type Config struct {
 	LocalListenAddress string  `json:"local_listen_address"`
@@ -38,6 +39,7 @@ type Config struct {
 	LevDistRatio       float64 `json:"levenshtein_distance_ratio"`
 	LogFile            string  `json:"log_file"`
 	FailoverPeer       string  `json:"failover_peer"`
+	FailoverLocal      string  `json:"failover_local"`
 }
 
 // RenderConfig parses config.json off the disk and returns a Config struct with an err value.

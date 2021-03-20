@@ -95,17 +95,16 @@ func SendUpdates(ldb *LinkDatabase) {
 
 // This handles incoming updates from the active redirector peer.
 func RunFailoverMonitor(updates chan *LinkDatabase) {
-	addressPort := fmt.Sprintf("%s:5999", ExternalAddress)
-	serviceAddress, err := net.ResolveTCPAddr("tcp4", addressPort)
+	serviceAddress, err := net.ResolveTCPAddr("tcp4", FailoverLocal)
 	if err != nil {
 		LogError.Fatalf("couldn't convert IP:port tuple to a valid service address: %s", err)
 	}
 
 	listener, err := net.ListenTCP("tcp", serviceAddress)
 	if err != nil {
-		LogError.Fatalf("couldn't open listening TCP socket at %s\n", addressPort)
+		LogError.Fatalf("couldn't open listening TCP socket at %s\n", FailoverLocal)
 	}
-	LogInfo.Printf("failover monitor started, listening on: %s\n", addressPort)
+	LogInfo.Printf("failover monitor started, listening on: %s\n", FailoverLocal)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
