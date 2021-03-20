@@ -39,7 +39,7 @@ JSON=$(grep -v '^ *#' << EOF
     "log_file": "redirector.log",
 # This is an ip:port combo of the failover peer for this system. A TCP connection is used to maintain
 # state between this system and the peer. An empty string here means this system comes up active at all times.
-    "failover_peer": ""
+    "failover_peer": "",
 # This is the ip:port combo on the local system which will be used as a TCP listener for failover.
     "failover_local": ""
 }
