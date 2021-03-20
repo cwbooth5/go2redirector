@@ -396,48 +396,68 @@ func main() {
 	}
 	core.ConfigureLogging(debugMode, file)
 
-	core.LogInfo.Printf("Loading link database from file: %s", importPath)
-	err = core.LinkDataBase.Import(importPath)
-	if err != nil {
-		core.LogError.Fatalf("Could not load link database from file %s\n", importPath)
-	}
+	/*
+		This is a simple active-standby failover mechanism.
+		If we see a value in the configuration file for the failover peer,
+		We attempt to connect to it. If the peer is up, we assume a STANDBY role.
+		If the peer is down, we assume an ACTIVE role.
 
+		Active == web server is turned on, we are sending updates to the standby
+		Standby == web server is off, we are receiving linkdb updates from the peer
+
+		This is designed specifically as a simple failover mechanism. It only supports
+		two systems in a coordinated pair.
+
+		When the active system shuts off, it will miss its heartbeat on the standby.
+		After a few seconds, the standby will load in the latest copy of the linkdb
+		and it will turn on its webserver.
+	*/
+	updateChan := make(chan *core.LinkDatabase, 1)
 	core.Synchronize()
-
-	updateChan := make(chan string, 1)
-	go func() {
-		for {
-			time.Sleep(2 * time.Second)
-			updateChan <- "blahblah"
-		}
-	}()
-
-	go core.PruneExpiringLinks()
-	go core.CheckpointDB("300s")
-
-	var s string
+	go core.RunFailoverMonitor(updateChan)
 
 	if core.IsActiveRedirector == false {
 		// This is the standby loop.
+		core.LogInfo.Println("We are starting in STANDBY mode")
 		for {
 			select {
-			case out := <-updateChan:
-				fmt.Printf("got a value: %s", out)
+			case incomingDB := <-updateChan:
+				core.LogDebug.Println("got a link DB update")
+				core.LinkDataBase = incomingDB
 			case <-time.After(5 * time.Second):
-				fmt.Println("timeout hit! Assuming active role")
+				core.LogError.Println("Timeout hit! Active did not sync with us. Assuming ACTIVE role...")
 				core.IsActiveRedirector = true
-				s = configureWebserver(listenAddress, listenPort)
+				// This is the standby -> active transition. Note we are loading our linkdb
+				// not from the disk, but from our core.LinkDataBase object.
+				go core.SendUpdates(core.LinkDataBase)
+				go core.PruneExpiringLinks()
+				go core.CheckpointDB("300s")
+				s := configureWebserver(listenAddress, listenPort)
 				err := http.ListenAndServe(s, nil)
 				if err != nil {
 					core.LogError.Fatal(err)
 				}
+				break
 			}
 		}
 	} else {
 		// This is the active execution path.
-		fmt.Println("We are starting active!")
-		s = configureWebserver(listenAddress, listenPort)
-		err := http.ListenAndServe(s, nil)
+		core.LogInfo.Println("We are starting in ACTIVE mode")
+
+		// load the link database off the disk.
+		core.LogDebug.Printf("Loading link database from file: %s", importPath)
+		err = core.LinkDataBase.Import(importPath)
+		if err != nil {
+			core.LogDebug.Fatalf("Could not load link database from file %s\n", importPath)
+		}
+
+		// When we go active and we have a peer, we will start sending regular updates to
+		// that peer indefinitely.
+		go core.SendUpdates(core.LinkDataBase)
+		go core.PruneExpiringLinks()
+		go core.CheckpointDB("300s")
+		ipPort := configureWebserver(listenAddress, listenPort)
+		err := http.ListenAndServe(ipPort, nil)
 		if err != nil {
 			core.LogError.Fatal(err)
 		}
