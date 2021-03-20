@@ -105,7 +105,7 @@ func RunFailoverMonitor(updates chan *LinkDatabase) {
 	if err != nil {
 		LogError.Fatalf("couldn't open listening TCP socket at %s\n", addressPort)
 	}
-	LogError.Printf("failover monitor started, listening on: %s\n", addressPort)
+	LogInfo.Printf("failover monitor started, listening on: %s\n", addressPort)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {

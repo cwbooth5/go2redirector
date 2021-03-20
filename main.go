@@ -413,8 +413,10 @@ func main() {
 		and it will turn on its webserver.
 	*/
 	updateChan := make(chan *core.LinkDatabase, 1)
-	core.Synchronize()
-	go core.RunFailoverMonitor(updateChan)
+	if core.FailoverPeer != "" {
+		core.Synchronize()
+		go core.RunFailoverMonitor(updateChan)
+	}
 
 	if core.IsActiveRedirector == false {
 		// This is the standby loop.
@@ -453,7 +455,9 @@ func main() {
 
 		// When we go active and we have a peer, we will start sending regular updates to
 		// that peer indefinitely.
-		go core.SendUpdates(core.LinkDataBase)
+		if core.FailoverPeer != "" {
+			go core.SendUpdates(core.LinkDataBase)
+		}
 		go core.PruneExpiringLinks()
 		go core.CheckpointDB("300s")
 		ipPort := configureWebserver(listenAddress, listenPort)
