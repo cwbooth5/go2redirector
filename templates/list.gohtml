@@ -48,9 +48,9 @@
           {{- end }}
           {{ if not .KeywordExists }}
               <h4 class="center">No links for this keyword: <span class="go2keyword go2keyword-large">{{ .Keyword }}</span></h4>
-              <a role="button" class="btn btn-primary btn-block-go2" id="addBtn" title="Edit this link" href="/_link_/0?returnto={{ .Keyword }}">Create new keyword by adding the first link</a>
+              <a role="button" class="btn btn-primary btn-block-go2" title="Edit this link" href="/_link_/0?returnto={{ .Keyword }}">Create new keyword by adding the first link</a>
           {{ else }}
-        <a role="button" class="btn btn-primary btn-block-go2" id="addBtn" title="Edit this link" href="/_link_/0?returnto={{ .Keyword }}">Add New Link</a>
+        <a role="button" class="btn btn-primary btn-block-go2" title="Edit this link" href="/_link_/0?returnto={{ .Keyword }}">Add New Link</a>
         <table class="table">
           <thead>
             <tr>
@@ -123,9 +123,5 @@
       </div>
     </div>
 </div> <!-- container-fluid -->
-
-<script>
-document.getElementById("addBtn").focus();
-</script>
 
 {{ end }}
