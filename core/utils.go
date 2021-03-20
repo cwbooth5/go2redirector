@@ -92,13 +92,19 @@ func Shutdown() {
 }
 
 // CheckpointDB saves a copy of the link database at a provided interval (a time duration string).
+// This also syncs the DB to the failover peer through a TCP connection at the same interval.
 func CheckpointDB(duration string) {
-	fileName := fmt.Sprintf("%s.bak", GodbFileName)
 	d, err := time.ParseDuration(duration)
 	if err != nil {
 		LogError.Fatalf("Specified duration of '%s' could not be parsed\n", duration)
 	}
 	for {
+		// purpose 1: sync db to peer on a time interval
+
+		//
+
+		// purpose 2: export the db to local disk as a backup
+		fileName := fmt.Sprintf("%s.bak", GodbFileName)
 		err := LinkDataBase.Export(fileName)
 		if err != nil {
 			LogError.Fatalf("DB checkpoint to file '%s' failed. %s", fileName, err)
@@ -335,10 +341,6 @@ func ParsePath(s string) (Gpath, error) {
 	tr := strings.TrimPrefix(s, "/")
 	tr = strings.TrimPrefix(tr, ".")
 	LogDebug.Printf("trimmed kwd: '%s'\n", tr)
-	// error checking: paths cannot start with unders Those are special pages.
-	if strings.HasPrefix(tr, "_") {
-		err = fmt.Errorf("Path could not be parsed due to underscore")
-	}
 	sp := strings.Split(tr, "/")
 	k, _ = MakeNewKeyword(sp[0])
 	if len(sp) > 2 {

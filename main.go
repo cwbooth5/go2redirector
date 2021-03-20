@@ -12,6 +12,7 @@ import (
 	"strings"
 	"syscall"
 	"text/template"
+	"time"
 
 	"github.com/cwbooth5/go2redirector/api"
 	gohttp "github.com/cwbooth5/go2redirector/http"
@@ -82,7 +83,6 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 		pth.Keyword, err = core.MakeNewKeyword(inputSplit[0])
 		if err != nil {
 			msg := fmt.Sprintf("Your keyword of '%s' was not valid. %s'", html.EscapeString(inputKeyword), err.Error())
-			// http.Error(w, msg, http.StatusBadRequest)
 			tmpl = "404.gohtml"
 			model.ErrorMessage = msg
 			return tmpl, model, redirect, err
@@ -227,7 +227,7 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 	case pth.Len() == 3:
 		// Third use case: keyord/tag/param
 		// We already know the list exists at this keyword.
-		fmt.Println("path len 3")
+		core.LogDebug.Println("path len 3")
 		// tag indicated the link we need to get a URL for.
 		var url string
 		var complete bool
@@ -311,6 +311,20 @@ func routeHappyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Run the webserver frontend. This is only done when this instance of the redirector
+// is the active member of the pair.
+func configureWebserver(a string, p int) string {
+	fs := http.FileServer(http.Dir("./static"))
+	http.Handle("/static/", http.StripPrefix("/static/", fs))
+	http.HandleFunc("/_link_/", gohttp.RouteLink)
+	http.HandleFunc("/api/", api.RouteAPI)
+	http.HandleFunc("/_db_", gohttp.RouteGetDB)
+	http.HandleFunc("/404.html", gohttp.RouteNotFound)
+	http.HandleFunc("/", routeHappyHandler) // golden happy path because why not?
+	core.LogInfo.Println(fmt.Sprintf("Server starting with arguments: %s:%d", core.ListenAddress, core.ListenPort))
+	return fmt.Sprintf("%s:%d", a, p)
+}
+
 /*
 	Initialization
 */
@@ -363,6 +377,7 @@ func main() {
 	core.LevDistRatio = go2Config.LevDistRatio
 	core.LinkLogNewKeywords = go2Config.LinkLogNewKeywords
 	core.LinkLogCapacity = go2Config.LinkLogCapacity
+	core.FailoverPeer = go2Config.FailoverPeer
 	var logFile = go2Config.LogFile
 
 	var importPath string
@@ -381,31 +396,70 @@ func main() {
 	}
 	core.ConfigureLogging(debugMode, file)
 
-	core.LogInfo.Printf("Loading link database from file: %s", importPath)
-	err = core.LinkDataBase.Import(importPath)
-	if err != nil {
-		core.LogError.Fatalf("Could not load link database from file %s\n", importPath)
-	}
+	/*
+		This is a simple active-standby failover mechanism.
+		If we see a value in the configuration file for the failover peer,
+		We attempt to connect to it. If the peer is up, we assume a STANDBY role.
+		If the peer is down, we assume an ACTIVE role.
 
-	core.LogInfo.Println(fmt.Sprintf("Server starting with arguments: %s:%d", core.ListenAddress, core.ListenPort))
+		Active == web server is turned on, we are sending updates to the standby
+		Standby == web server is off, we are receiving linkdb updates from the peer
 
-	fs := http.FileServer(http.Dir("./static"))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
-	http.HandleFunc("/_link_/", gohttp.RouteLink)
-	http.HandleFunc("/api/", api.RouteAPI)
-	http.HandleFunc("/_db_", gohttp.RouteGetDB)
-	http.HandleFunc("/404.html", gohttp.RouteNotFound)
-	http.HandleFunc("/", routeHappyHandler) // golden happy path because why not?
+		This is designed specifically as a simple failover mechanism. It only supports
+		two systems in a coordinated pair.
 
-	go core.PruneExpiringLinks()
+		When the active system shuts off, it will miss its heartbeat on the standby.
+		After a few seconds, the standby will load in the latest copy of the linkdb
+		and it will turn on its webserver.
+	*/
+	updateChan := make(chan *core.LinkDatabase, 1)
+	core.Synchronize()
+	go core.RunFailoverMonitor(updateChan)
 
-	go core.CheckpointDB("300s")
+	if core.IsActiveRedirector == false {
+		// This is the standby loop.
+		core.LogInfo.Println("We are starting in STANDBY mode")
+		for {
+			select {
+			case incomingDB := <-updateChan:
+				core.LogDebug.Println("got a link DB update")
+				core.LinkDataBase = incomingDB
+			case <-time.After(5 * time.Second):
+				core.LogError.Println("Timeout hit! Active did not sync with us. Assuming ACTIVE role...")
+				core.IsActiveRedirector = true
+				// This is the standby -> active transition. Note we are loading our linkdb
+				// not from the disk, but from our core.LinkDataBase object.
+				go core.SendUpdates(core.LinkDataBase)
+				go core.PruneExpiringLinks()
+				go core.CheckpointDB("300s")
+				s := configureWebserver(listenAddress, listenPort)
+				err := http.ListenAndServe(s, nil)
+				if err != nil {
+					core.LogError.Fatal(err)
+				}
+				break
+			}
+		}
+	} else {
+		// This is the active execution path.
+		core.LogInfo.Println("We are starting in ACTIVE mode")
 
-	// MakeStuff()
+		// load the link database off the disk.
+		core.LogDebug.Printf("Loading link database from file: %s", importPath)
+		err = core.LinkDataBase.Import(importPath)
+		if err != nil {
+			core.LogDebug.Fatalf("Could not load link database from file %s\n", importPath)
+		}
 
-	p := fmt.Sprintf("%s:%d", listenAddress, listenPort)
-	err = http.ListenAndServe(p, nil)
-	if err != nil {
-		core.LogError.Fatal(err)
+		// When we go active and we have a peer, we will start sending regular updates to
+		// that peer indefinitely.
+		go core.SendUpdates(core.LinkDataBase)
+		go core.PruneExpiringLinks()
+		go core.CheckpointDB("300s")
+		ipPort := configureWebserver(listenAddress, listenPort)
+		err := http.ListenAndServe(ipPort, nil)
+		if err != nil {
+			core.LogError.Fatal(err)
+		}
 	}
 }

@@ -7,7 +7,7 @@
     <!-- {{if .KeywordExists }}<h3 class="center">{{ .Keyword }}</h3>{{ end }} -->
     <div class="col-sm-6" style="margin-bottom: 10px;">
       <div class="card">
-         <!-- Check here to see if this keyword exists. If so, show them the behavior change table. -->
+         {{/* Check here to see if this keyword exists. If so, show them the behavior change table. */}}
           {{ if .KeywordExists }}
           <div class="card-header text-center">
             {{ if .ErrorMessage }}
