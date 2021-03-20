@@ -475,6 +475,10 @@ func (d *LinkDatabase) LinksByAtime(count int) []*Link {
 		linkPile = append(linkPile, link)
 	}
 	sort.Sort(ByAtime(linkPile))
+	// Check for the < count case
+	if len(linkPile) < count {
+		return linkPile
+	}
 	return linkPile[:count]
 }
 
@@ -485,6 +489,10 @@ func (d *LinkDatabase) LinksByMtime(count int) []*Link {
 		linkPile = append(linkPile, link)
 	}
 	sort.Sort(ByMtime(linkPile))
+	// Check for the < count case
+	if len(linkPile) < count {
+		return linkPile
+	}
 	return linkPile[:count]
 }
 

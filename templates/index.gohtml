@@ -16,7 +16,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                  {{ range .LinkDB.LinksByMtime 1 }}
+                  {{ range .LinkDB.LinksByMtime 5 }}
                     {{- if ne .ID 1 }}
                       <tr>
                         <td><a href="/.{{ index .Lists 0 }}" class="go2keyword go2keyword-small" title="{{ index .Lists 0 }}">{{ index .Lists 0 }}</a></td>
@@ -43,7 +43,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                  {{ range .LinkDB.LinksByAtime 1 }}
+                  {{ range .LinkDB.LinksByAtime 5 }}
                       {{ if ne .ID 1 }}
                     <tr>
                       <td>{{ if .Special }}<a title="{{ .URL }}">{{ .Title }}</a>{{ else }}<a href="{{ .URL }}"><span>{{ .Title }}</span></a>{{ end }}</td>
