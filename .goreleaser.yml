@@ -27,14 +27,14 @@ changelog:
       - '^docs:'
       - '^test:'
 dockers:
-  - 
+  -
     image_templates:
     - "docker.pkg.github.com/cwbooth5/go2redirector/go2redirector:{{ .Tag }}"
     extra_files:
-    - main.go 
-    - go.mod 
-    - go.sum 
-    - godb.json.init 
+    - main.go
+    - go.mod
+    - go.sum
+    - godb.json.init
     - install.sh
     - api/
     - http/
