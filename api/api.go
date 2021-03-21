@@ -50,7 +50,6 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "POST":
 			r.ParseForm()
-			//core.LogDebug.Println("Incoming POST fields/values:")
 			for k, v := range r.Form {
 				fmt.Printf("%s: %s\n", k, v)
 				if k == "internal" && v[0] != "" {
