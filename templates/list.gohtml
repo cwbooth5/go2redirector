@@ -69,7 +69,12 @@
               <td>
               {{ $thislist := $.GetMyList $.Keyword }}
                {{ $thistag := $thislist.GetTag .ID }}
+               {{ $warning := $thislist.CheckTag $thistag }}
+               {{ if ne $warning "" }}
+              <a title="{{ $warning }}">{{ $thistag }}<sup> duplicate!</sup></a>
+               {{ else }}
               {{ $thistag }}
+              {{ end }}
               </td>
               <td>
                 {{ if .Special }}<a title="{{ .URL }}">{{ .Title }}</a>{{ else }}<a title="{{ .URL }}" href="{{ .URL }}"><span>{{ .Title }}</span></a>{{ end }}<br>

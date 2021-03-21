@@ -53,16 +53,14 @@ const (
 // The URL is a string because it might have substitutions within, not being a valid URL while stored here.
 // Ctime == created, Mtime == modified, Atime == last time clicked/redirected
 type Link struct {
-	ID    int // This is the one value users can never change.
-	URL   string
-	Title string
-	// Lists         map[Keyword]*ListOfLinks // old: Lists []Keyword
-	Lists []Keyword
-	Ctime time.Time
-	Mtime time.Time
-	Atime time.Time
-	Dtime time.Time
-	//Special       bool
+	ID            int // This is the one value users can never change.
+	URL           string
+	Title         string
+	Lists         []Keyword
+	Ctime         time.Time
+	Mtime         time.Time
+	Atime         time.Time
+	Dtime         time.Time
 	LinkVariables map[string]string
 	Clicks        int
 }
@@ -89,6 +87,7 @@ type LinkDatabase struct {
 }
 
 // Gpath holds a Keyword, a Tag, and an array of any Params supplied by the user.
+// This is used to structure their input to the redirector (from their browser URL bar).
 type Gpath struct {
 	Keyword Keyword
 	Tag     string
@@ -281,6 +280,9 @@ func (ll *ListOfLinks) GetTag(i int) string {
 	return ll.TagBindings[i]
 }
 
+// ClickSort will sort a list of links by each link's click count. It will not return
+// a modified list, but an array of *Link pointers. This is used mostly for list
+// display purposes.
 func (ll *ListOfLinks) ClickSort() []*Link {
 	sorted := []*Link{}
 	for _, lnk := range ll.Links {
@@ -311,6 +313,25 @@ func (ll *ListOfLinks) GetSimilar(kwd Keyword) []Keyword {
 		}
 	}
 	return targets
+}
+
+// Check a tag on a list of links and return a string describing any problems (if any).
+// Currently, the only problem users can create is a duplicate tag in a list.
+func (ll *ListOfLinks) CheckTag(inputTag string) string {
+	// look through the tag bindings. Is this tag already present?
+	dupes := make(map[string]bool)
+	for _, tag := range ll.TagBindings {
+		if _, exists := dupes[tag]; !exists {
+			dupes[tag] = false
+		} else {
+			dupes[tag] = true
+		}
+	}
+	if dupes[inputTag] == true {
+		return "Duplicate tag! This could lead to undefined list behavior."
+	} else {
+		return "" // no probems found
+	}
 }
 
 /*
