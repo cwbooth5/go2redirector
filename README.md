@@ -1,6 +1,6 @@
 # The Go2 Redirector
 
-[![Build Status](https://github.com/cwbooth5/go2redirector/actions/workflows/go.yml/badge.svg)](https://github.com/cwbooth5/go2redirector/actions/workflows/go.yml)
+[![Build Status](https://github.com/cwbooth5/go2redirector/actions/workflows/build.yml/badge.svg)](https://github.com/cwbooth5/go2redirector/actions/workflows/build.yml)
 
 This is a mnemonic URL database, redirector, and search engine.
 
