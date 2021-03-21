@@ -68,18 +68,19 @@ func (d LinkDatabase) ExportNetwork() error {
 	if err != nil {
 		LogError.Fatalf("couldn't convert IP:port tuple to a valid service address: %s", err)
 	}
+
 	conn, err := net.DialTCP("tcp4", nil, serviceAddress)
 	if err != nil {
 		LogError.Printf("Standby peer status: %s\n", err)
 		return err
 	}
+	defer conn.Close()
 
 	LogInfo.Println("Standby peer is up, sending update...")
 	if _, err := conn.Write(file); err != nil {
 		LogDebug.Fatal(err)
 	}
 	conn.Write(file)
-	conn.Close()
 	return err
 }
 
@@ -110,7 +111,7 @@ func RunFailoverMonitor(updates chan *LinkDatabase) {
 		if err != nil {
 			continue
 		}
-
+		defer conn.Close()
 		// Two cases here.
 		// 1. The data arriving is a diceroll from a peer coming up. (we are active)
 		// 2. The data arriving is a DB we need to load into memory. (we are standby)
@@ -121,7 +122,7 @@ func RunFailoverMonitor(updates chan *LinkDatabase) {
 			// Send back a high number, impossible for the peer to beat, forcing them standby.
 			LogDebug.Println("A peer just came online, letting them know we are active")
 			conn.Write([]byte("diceroll:9999999"))
-			conn.Close()
+
 		} else {
 			// case 2
 			// We try to marshal the incoming data into JSON, if so, it's a DB update.
@@ -136,7 +137,7 @@ func RunFailoverMonitor(updates chan *LinkDatabase) {
 			}
 			// send a positive acknowledgement to the standby
 			conn.Write([]byte("SUCCESS"))
-			conn.Close()
+
 			updated_database := &tempdb
 			updates <- updated_database
 		}
