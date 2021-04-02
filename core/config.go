@@ -2,7 +2,6 @@ package core
 
 import (
 	"encoding/json"
-	"log"
 	"os"
 )
 
@@ -47,10 +46,12 @@ type Config struct {
 func RenderConfig(file string) (Config, error) {
 	var parsed Config
 	cfgFile, err := os.Open(file)
-	defer cfgFile.Close()
+
 	if err != nil {
-		log.Fatalf("Error loading %s: %s (run install script)", file, err)
+		LogError.Printf("Error loading %s: %s (run install script)", file, err)
+		return parsed, err
 	}
+	defer cfgFile.Close()
 
 	parser := json.NewDecoder(cfgFile)
 	err = parser.Decode(&parsed)

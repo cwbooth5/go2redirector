@@ -273,7 +273,7 @@ func TestConfigLoad(t *testing.T) {
 		t.Error("this config was not supposed to load (not found")
 	}
 	// TODO: render a config with bad JSON
-	_, e := core.RenderConfig("go2redirector.go")
+	_, e := core.RenderConfig("README.md")
 	if e == nil {
 		t.Error("this config was not supposed to load (malformed")
 	}
