@@ -53,16 +53,21 @@
             {{/* we have to take care here not to check anything nil. This will render the tag at the end of the breadcrumb */}}
             {{ if $thislist }}
                 {{/* This is a macro to see if the tag is set on this link */}}
-                {{ range $id, $tag := $thislist.TagBindings }}
+                {{ $untagged := false }}
+                {{ range $id, $tagList := $thislist.TagBindings }}
                     {{ if $.LinkBeingEdited }}
                         {{ if eq $id $.LinkBeingEdited.ID }}
-                            {{ if eq $tag "" }}
-                            <li class="breadcrumb-item active"><span class="font-italic">(untagged!)</span></li>
-                            {{ else }}
-                            <li class="breadcrumb-item active">{{ $tag }}</li>
+                            {{ range $tag := $tagList }}
+                                {{ if eq $tag "" }}
+                                <li class="breadcrumb-item active"><span class="font-italic">(untagged!)</span></li>
+                                {{ $untagged = true }}
+                                {{ end }}
                             {{ end }}
                         {{ end }}
                     {{ end }}
+                {{ end }}
+                {{ if eq $untagged false}}
+                <li class="breadcrumb-item active">{{ $thislist.GetTagString $.LinkBeingEdited.ID " || " }}</li>
                 {{ end }}
             {{ end }}
             {{- end }}

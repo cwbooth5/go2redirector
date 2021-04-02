@@ -62,7 +62,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			outboundLink := apiLink{
 				Keyword: kw,
 				Title:   r.FormValue("title"),
-				Tag:     strings.ToLower(r.FormValue("tag")),
+				Tag:     strings.ToLower(r.FormValue("tag")), // note this is a space-delimited string of tags at this point
 				Url:     core.SanitizeURL(r.FormValue("url")),
 				ID:      id,
 			}
@@ -125,6 +125,12 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
+			// TAGS: The form input is a single field of space-delimited strings. Those are the tags.
+			// The entire list of tags for the given link is overwritten by whatever they enter here.
+			fmt.Printf("outbound link tag: %s\n", outboundLink.Tag)
+			allTags := strings.Split(outboundLink.Tag, " ")
+			fmt.Printf("alltags: %v\n", allTags)
+
 			if id == 0 {
 				core.LogDebug.Printf("POST is adding a new link.")
 				// We are editing an existing link.
@@ -133,10 +139,9 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 				// inbound link has its new linkid now.
 				outboundLink.ID = lid
 				core.LogInfo.Printf("New link with ID %d was added to the DB.\n", lid)
-				ll.TagBindings[lid] = outboundLink.Tag
+				ll.TagBindings[lid] = allTags
 			} else {
-				// tag binding
-				ll.TagBindings[id] = outboundLink.Tag
+				ll.TagBindings[id] = allTags
 			}
 			// existing links will be coupled further down
 
