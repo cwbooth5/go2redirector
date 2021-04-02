@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/json"
+	"log"
 	"os"
 )
 
@@ -47,9 +48,12 @@ func RenderConfig(file string) (Config, error) {
 	var parsed Config
 	cfgFile, err := os.Open(file)
 	defer cfgFile.Close()
-	if err == nil {
-		parser := json.NewDecoder(cfgFile)
-		err = parser.Decode(&parsed)
+	if err != nil {
+		log.Fatalf("Error loading %s: %s (run install script)", file, err)
 	}
+
+	parser := json.NewDecoder(cfgFile)
+	err = parser.Decode(&parsed)
+
 	return parsed, err
 }
