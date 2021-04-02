@@ -107,8 +107,9 @@ window.addEventListener('load', function() {
               <td>
               {{ $thislist := .GetMyList .Keyword }}
               {{ if $thislist }}
-                {{ $thistag := $thislist.GetTag $linkid }}
-                <input type="text" name="tag" class="form-control" value="{{ $thistag }}" placeholder=""/>
+                {{ $tagsString := $thislist.GetTagString $linkid " " }}
+                {{/* The tags will be space-delimited here */}}
+                <input type="text" name="tag" class="form-control" value="{{ $tagsString }}" placeholder=""/>
               {{ else }}
                 <input type="text" name="tag" class="form-control" value="" placeholder=""/>
               {{ end }}

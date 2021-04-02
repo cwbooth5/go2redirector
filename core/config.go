@@ -46,10 +46,15 @@ type Config struct {
 func RenderConfig(file string) (Config, error) {
 	var parsed Config
 	cfgFile, err := os.Open(file)
-	defer cfgFile.Close()
-	if err == nil {
-		parser := json.NewDecoder(cfgFile)
-		err = parser.Decode(&parsed)
+
+	if err != nil {
+		LogError.Printf("Error loading %s: %s (run install script)", file, err)
+		return parsed, err
 	}
+	defer cfgFile.Close()
+
+	parser := json.NewDecoder(cfgFile)
+	err = parser.Decode(&parsed)
+
 	return parsed, err
 }

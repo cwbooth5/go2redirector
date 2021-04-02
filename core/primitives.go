@@ -70,14 +70,13 @@ type Link struct {
 // Bindings keep track of link ID-to-code word mappings. A link in a given list of links can have a different
 // code, because each link can be thought of like its own context
 type ListOfLinks struct {
-	Keyword Keyword
-	// Links    []*link
+	Keyword     Keyword
 	Links       map[int]*Link
 	Behavior    int // negative IDs are special cases
 	Clicks      int
 	Usage       string
 	Logging     bool
-	TagBindings map[int]string
+	TagBindings map[int][]string
 }
 
 type LinkDatabase struct {
@@ -195,7 +194,7 @@ func MakeNewList(keyword Keyword, linkobj *Link) *ListOfLinks {
 		Behavior:    behavior,
 		Usage:       "",
 		Logging:     LinkLogNewKeywords,
-		TagBindings: make(map[int]string),
+		TagBindings: make(map[int][]string),
 	}
 }
 
@@ -275,9 +274,13 @@ func (ll *ListOfLinks) ModifyLogging(setting bool) {
 	}
 }
 
-// Return a tag string for a given link ID in this list of links.
-func (ll *ListOfLinks) GetTag(i int) string {
+// Return a tag []string for a given link ID in this list of links.
+func (ll *ListOfLinks) GetTag(i int) []string {
 	return ll.TagBindings[i]
+}
+
+func (ll *ListOfLinks) GetTagString(i int, delimiter string) string {
+	return strings.Join(ll.TagBindings[i], delimiter)
 }
 
 // ClickSort will sort a list of links by each link's click count. It will not return
@@ -320,11 +323,13 @@ func (ll *ListOfLinks) GetSimilar(kwd Keyword) []Keyword {
 func (ll *ListOfLinks) CheckTag(inputTag string) string {
 	// look through the tag bindings. Is this tag already present?
 	dupes := make(map[string]bool)
-	for _, tag := range ll.TagBindings {
-		if _, exists := dupes[tag]; !exists {
-			dupes[tag] = false
-		} else {
-			dupes[tag] = true
+	for _, taglist := range ll.TagBindings {
+		for _, tag := range taglist {
+			if _, exists := dupes[tag]; !exists {
+				dupes[tag] = false
+			} else {
+				dupes[tag] = true
+			}
 		}
 	}
 	if dupes[inputTag] == true {

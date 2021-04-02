@@ -28,34 +28,34 @@ func MakeStuff() {
 
 	ll := core.MakeNewList(core.Keyword("r"), lnk)
 	core.LinkDataBase.Couple(ll, lnk)
-	ll.TagBindings[lnk.ID] = "pics"
+	ll.TagBindings[lnk.ID] = []string{"pics"}
 
 	lnk, _ = core.MakeNewlink("www.127.0.0.1/foo", "local")
 	core.LinkDataBase.CommitNewLink(lnk)
 	core.LinkDataBase.Couple(ll, lnk)
-	ll.TagBindings[lnk.ID] = "l"
+	ll.TagBindings[lnk.ID] = []string{"l"}
 
 	// wikipedia test of tagging
 	lnk, _ = core.MakeNewlink("https://en.wikipedia.org/wiki/{subject}", "english wikipedia")
 	core.LinkDataBase.CommitNewLink(lnk)
 	ll = core.MakeNewList(core.Keyword("wiki"), lnk)
 	core.LinkDataBase.Couple(ll, lnk)
-	ll.TagBindings[lnk.ID] = "en"
+	ll.TagBindings[lnk.ID] = []string{"en"}
 
 	lnk, _ = core.MakeNewlink("https://it.wikipedia.org", "italian wikipedia")
 	core.LinkDataBase.CommitNewLink(lnk)
 	core.LinkDataBase.Couple(ll, lnk)
-	ll.TagBindings[lnk.ID] = "it"
+	ll.TagBindings[lnk.ID] = []string{"it"}
 
 	lnk, _ = core.MakeNewlink("https://es.wikipedia.org", "spanish wikipedia")
 	core.LinkDataBase.CommitNewLink(lnk)
 	core.LinkDataBase.Couple(ll, lnk)
-	ll.TagBindings[lnk.ID] = "es"
+	ll.TagBindings[lnk.ID] = []string{"es"}
 
 	lnk, _ = core.MakeNewlink("https://de.wikipedia.org", "german wikipedia")
 	core.LinkDataBase.CommitNewLink(lnk)
 	core.LinkDataBase.Couple(ll, lnk)
-	ll.TagBindings[lnk.ID] = "de"
+	ll.TagBindings[lnk.ID] = []string{"de"}
 
 }
 
@@ -161,22 +161,24 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 
 		// Check for the use case of "existing keyword but missing tag"
 		var tagfound bool
-		for id, tag := range ll.TagBindings {
-			if pth.Tag == tag {
-				tagfound = true
-				core.LogDebug.Printf("Tag '%s' located on list, link ID %d\n", pth.Tag, id)
-				l := core.LinkDataBase.GetLink(id, "")
-				if !l.Special() {
-					l.Clicks++
-					core.LogDebug.Println("Redirecting based on tag")
-					core.LogInfo.Printf("Path '%s/%s' redirect rendered: %s\n", pth.Keyword, pth.Tag, l.URL)
-					http.Redirect(w, r, l.URL, 307)
-					redirect = true
-					if l.Dtime == core.BurnTime {
-						core.LogInfo.Printf("Link %d is being burned.\n", l.ID)
-						core.DestroyLink(l)
+		for id, tagList := range ll.TagBindings {
+			for _, tag := range tagList {
+				if pth.Tag == tag {
+					tagfound = true
+					core.LogDebug.Printf("Tag '%s' located on list, link ID %d\n", pth.Tag, id)
+					l := core.LinkDataBase.GetLink(id, "")
+					if !l.Special() {
+						l.Clicks++
+						core.LogDebug.Println("Redirecting based on tag")
+						core.LogInfo.Printf("Path '%s/%s' redirect rendered: %s\n", pth.Keyword, pth.Tag, l.URL)
+						http.Redirect(w, r, l.URL, 307)
+						redirect = true
+						if l.Dtime == core.BurnTime {
+							core.LogInfo.Printf("Link %d is being burned.\n", l.ID)
+							core.DestroyLink(l)
+						}
+						return tmpl, model, redirect, err
 					}
-					return tmpl, model, redirect, err
 				}
 			}
 		}
@@ -204,19 +206,21 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 				// pth.Tag is being treated as a tag to look up a link in this list.
 				core.LogDebug.Printf("resolved redirectURL contains no variables. %s\n", url)
 				// search for the tag in this list. If it is there, redirect to that link. If not, edit list page is rendered
-				for id, tag := range ll.TagBindings {
-					if pth.Tag == tag {
-						core.LogDebug.Printf("Tag '%s' was found on list '%s'\n", pth.Tag, ll.Keyword)
-						lnk := ll.Links[id]
-						lnk.Clicks++
-						core.LogInfo.Printf("Path '%s/%s' redirect rendered: %s\n", pth.Keyword, pth.Tag, lnk.URL)
-						http.Redirect(w, r, lnk.URL, 307) //TODO if this needs to do a replacement...we need it here.
-						redirect = true
-						if lnk.Dtime == core.BurnTime {
-							core.LogInfo.Printf("Link %d is being burned.\n", lnk.ID)
-							core.DestroyLink(lnk)
+				for id, tagList := range ll.TagBindings {
+					for _, tag := range tagList {
+						if pth.Tag == tag {
+							core.LogDebug.Printf("Tag '%s' was found on list '%s'\n", pth.Tag, ll.Keyword)
+							lnk := ll.Links[id]
+							lnk.Clicks++
+							core.LogInfo.Printf("Path '%s/%s' redirect rendered: %s\n", pth.Keyword, pth.Tag, lnk.URL)
+							http.Redirect(w, r, lnk.URL, 307) //TODO if this needs to do a replacement...we need it here.
+							redirect = true
+							if lnk.Dtime == core.BurnTime {
+								core.LogInfo.Printf("Link %d is being burned.\n", lnk.ID)
+								core.DestroyLink(lnk)
+							}
+							return tmpl, model, redirect, err
 						}
-						return tmpl, model, redirect, err
 					}
 				}
 			}
@@ -231,24 +235,26 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 		// tag indicated the link we need to get a URL for.
 		var url string
 		var complete bool
-		for id, tag := range ll.TagBindings {
-			if pth.Tag == tag {
-				for _, l := range ll.Links {
-					if id == l.ID {
-						// We have a link URL now at that tag on this list.
-						url, complete, err = gohttp.RenderSpecial(r, []string{pth.Params[0]}, l, ll)
-						if complete {
-							core.LogInfo.Printf("Path '%s/%s' redirect rendered: %s\n", pth.Keyword, pth.Tag, url)
-							l.Clicks++
-							http.Redirect(w, r, url, 307)
-							redirect = true
-							if l.Dtime == core.BurnTime {
-								core.LogInfo.Printf("Link %d is being burned.\n", l.ID)
-								core.DestroyLink(l)
+		for id, tagList := range ll.TagBindings {
+			for _, tag := range tagList {
+				if pth.Tag == tag {
+					for _, l := range ll.Links {
+						if id == l.ID {
+							// We have a link URL now at that tag on this list.
+							url, complete, err = gohttp.RenderSpecial(r, []string{pth.Params[0]}, l, ll)
+							if complete {
+								core.LogInfo.Printf("Path '%s/%s' redirect rendered: %s\n", pth.Keyword, pth.Tag, url)
+								l.Clicks++
+								http.Redirect(w, r, url, 307)
+								redirect = true
+								if l.Dtime == core.BurnTime {
+									core.LogInfo.Printf("Link %d is being burned.\n", l.ID)
+									core.DestroyLink(l)
+								}
+								return tmpl, model, redirect, err
 							}
-							return tmpl, model, redirect, err
+							// if incomplete, I guess we can error out?
 						}
-						// if incomplete, I guess we can error out?
 					}
 				}
 			}
@@ -451,7 +457,8 @@ func main() {
 		core.LogDebug.Printf("Loading link database from file: %s", importPath)
 		err = core.LinkDataBase.Import(importPath)
 		if err != nil {
-			core.LogDebug.Fatalf("Could not load link database from file %s\n", importPath)
+			core.LogDebug.Println(err)
+			//core.LogDebug.Fatalf("Could not load link database from file %s\n", importPath)
 		}
 
 		// When we go active and we have a peer, we will start sending regular updates to

@@ -68,7 +68,11 @@
               <td><a title="Updated {{ $prettydelta }}">{{ if eq $idx 0 }}<span class="badge badge-go2">Freshest!</span>{{ else }}{{ $idx }}{{ end }}</a></td>
               <td>
               {{ $thislist := $.GetMyList $.Keyword }}
-               {{ $thistag := $thislist.GetTag .ID }}
+               {{ $tagList := $thislist.GetTag .ID }}
+
+
+              {{ range $thistag := $tagList }}
+
                {{ $warning := $thislist.CheckTag $thistag }}
                {{ if ne $warning "" }}
                 {{ if ne $thistag "" }}
@@ -76,6 +80,8 @@
                 {{ end }}
                {{ else }}
               {{ $thistag }}
+              {{ end }}
+
               {{ end }}
               </td>
               <td>
