@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 
-<<<<<<< HEAD
-=======
 """
 This script exists for conversion of godb.json from the previous version to the current version.
 
 It should be run if json marshalling errors show up when attempting to load the DB.
 """
 
->>>>>>> 15-tag-improvements
 import os
 import json
 
