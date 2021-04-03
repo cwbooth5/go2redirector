@@ -103,7 +103,7 @@ window.addEventListener('load', function() {
             </tr>
 
             <tr>
-              <td>Tag</td>
+              <td>Tags</td>
               <td>
               {{ $thislist := .GetMyList .Keyword }}
               {{ if $thislist }}
@@ -113,6 +113,9 @@ window.addEventListener('load', function() {
               {{ else }}
                 <input type="text" name="tag" class="form-control" value="" placeholder=""/>
               {{ end }}
+              <small class="form-text text-muted">
+                 Multiple tags can be supplied, separated with spaces.
+                </small>
               </td>
             </tr>
 
@@ -145,7 +148,7 @@ window.addEventListener('load', function() {
 
                 <textarea id="urlinput" name="url" rows="4" cols="50" placeholder="www.example.com" class="form-control" aria-describedby="urlHelpBlock" oninput="addinputs()" required>{{ if ne $linkid 0 }}{{ .LinkBeingEdited.URL }}{{ end }}</textarea>
                 <small id="urlHelpBlock" class="form-text text-muted">
-                  URLs can have {variables} within. Just enclose them in curly brackets "{}".
+                  Add {1} into the URL here to substitute the first input parameter.
                 </small>
               </td>
             </tr>
