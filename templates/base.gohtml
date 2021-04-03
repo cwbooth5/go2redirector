@@ -66,8 +66,11 @@
                         {{ end }}
                     {{ end }}
                 {{ end }}
-                {{ if eq $untagged false}}
-                <li class="breadcrumb-item active">{{ $thislist.GetTagString $.LinkBeingEdited.ID " || " }}</li>
+                {{ if eq $untagged false }}
+                {{ $tagString := $thislist.GetTagString $.LinkBeingEdited.ID " || " }}
+                    {{ if ne $tagString "" }}
+                    <li class="breadcrumb-item active">{{ $tagString }}</li>
+                    {{ end }}
                 {{ end }}
             {{ end }}
             {{- end }}
