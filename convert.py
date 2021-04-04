@@ -8,19 +8,29 @@ It should be run if json marshalling errors show up when attempting to load the 
 
 import os
 import json
+import sys
 
-with open("godb.json") as f:
-    data = json.loads(f.read())
 
-for lst, contents in data['Lists'].items():
-    for linkid, tag in contents['TagBindings'].items():
-        if type(tag) == str:
-            print(f"List [{lst}] linkid [{linkid}] tag [{tag}] converted to list")
-            contents['TagBindings'][linkid] = [tag]
+def main():
+    original_file = sys.argv[1]
+    with open(original_file) as f:
+        data = json.loads(f.read())
 
-os.rename("godb.json", "godb.json.backup")
+    for lst, contents in data['Lists'].items():
+        for linkid, tag in contents['TagBindings'].items():
+            if type(tag) == str:
+                print(f"List [{lst}] linkid [{linkid}] tag [{tag}] converted to list")
+                contents['TagBindings'][linkid] = [tag]
 
-with open("godb.json", "w") as f:
-    f.write(json.dumps(data))
+    os.rename(original_file, f"{original_file}.backup")
 
-print("conversion complete")
+    with open(original_file, "w") as f:
+        f.write(json.dumps(data))
+
+    print(f"conversion complete, backup saved to {original_file}.backup")
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        sys.exit("enter a godb file in JSON format for conversion")
+    main()

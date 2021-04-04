@@ -42,3 +42,4 @@ dockers:
     - static/
     - templates/
     - README.md
+    - convert.py
