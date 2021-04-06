@@ -323,6 +323,7 @@ func configureWebserver(a string, p int) string {
 	fs := http.FileServer(http.Dir("./static"))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
 	http.HandleFunc("/_link_/", gohttp.RouteLink)
+	http.HandleFunc("/_login_", gohttp.RouteLogin)
 	http.HandleFunc("/api/", api.RouteAPI)
 	http.HandleFunc("/_db_", gohttp.RouteGetDB)
 	http.HandleFunc("/404.html", gohttp.RouteNotFound)

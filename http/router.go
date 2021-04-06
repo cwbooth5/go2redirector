@@ -34,6 +34,8 @@ func RouteLink(w http.ResponseWriter, r *http.Request) {
 	// POST requests will
 	requestDump, err := httputil.DumpRequest(r, true)
 
+	activeUser := extractUser(r)
+
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -79,6 +81,7 @@ func RouteLink(w http.ResponseWriter, r *http.Request) {
 					LinkExists:         exists,
 					LinkBeingEdited:    existingLink,
 					RedirectorName:     core.RedirectorName,
+					ActiveUser:         activeUser,
 				}
 				err := RenderTemplate(w, "404.gohtml", &model)
 				if err != nil {
@@ -157,6 +160,7 @@ func RouteLink(w http.ResponseWriter, r *http.Request) {
 			LinkBeingEdited:    &lnk,
 			RedirectorName:     core.RedirectorName,
 			Overrides:          overrides,
+			ActiveUser:         activeUser,
 		}
 
 		err = RenderTemplate(w, "editlink.gohtml", &model)
@@ -184,7 +188,7 @@ func RouteLink(w http.ResponseWriter, r *http.Request) {
 
 		// send them back to the list page for that keyword.
 		s := fmt.Sprintf("%s/.%s", core.ListenURL(), keyword)
-		http.Redirect(w, r, s, 302)
+		http.Redirect(w, r, s, http.StatusFound)
 	}
 }
 
@@ -202,6 +206,48 @@ func RouteNotFound(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func RouteLogin(w http.ResponseWriter, r *http.Request) {
+	// Right now, this only supports POST requests to change their cookie.
+	if r.Method == "POST" {
+		// Login interface
+		// We get their name, set their cookie, then redirect back to index
+		// To log them out, we set their cookie TTL to expire.
+
+		core.LogDebug.Println("post to _login_")
+		// get their name from the POST form
+		r.ParseForm()
+		var theirName string
+		theirPostName := r.PostFormValue("loginname")
+		theirCookieName := extractUser(r)
+		if theirPostName != "" {
+			theirName = theirPostName
+		} else {
+			theirName = theirCookieName
+		}
+		ttl := time.Unix(0, 0) // a sensible default: expire immediately
+
+		if r.PostFormValue("delete") == "true" {
+			// They are logging out. We will set their cookie to expire now.
+			core.LogDebug.Printf("User '%s' is logging out\n", theirName)
+			// ttl will just be the default value of "immediately"
+		} else if theirName != "" {
+			day, _ := time.ParseDuration("24h")
+			ttl = time.Now().Add(day)
+			core.LogDebug.Printf("User %s is logging in\n", theirName)
+		}
+
+		cookie := http.Cookie{
+			Name:    "redirectorlogin",
+			Value:   theirName,
+			Expires: ttl,
+		}
+
+		// We always set a cookie. TTL determines login/logout
+		http.SetCookie(w, &cookie)
+		http.Redirect(w, r, fmt.Sprintf("%s/", core.ListenURL()), http.StatusFound)
+	}
+}
+
 func routeSpecialListPage(w http.ResponseWriter, r *http.Request, keyword core.Keyword, params []string, errMsg string) {
 	var model ModelIndex
 	var kwdExists = false
@@ -213,6 +259,8 @@ func routeSpecialListPage(w http.ResponseWriter, r *http.Request, keyword core.K
 	if _, exists := core.LinkDataBase.Lists[keyword]; exists {
 		kwdExists = true
 	}
+
+	activeUser := extractUser(r)
 
 	// Regarding the params: It's going to come in as an array of strings. (might want to change to just string later - TODO)
 	model = ModelIndex{
@@ -227,6 +275,7 @@ func routeSpecialListPage(w http.ResponseWriter, r *http.Request, keyword core.K
 		KeywordParams:      params,
 		UsageLog:           core.LinkLog[keyword],
 		ErrorMessage:       errMsg,
+		ActiveUser:         activeUser,
 	}
 	core.LogDebug.Printf("Usage strings: %s\n", model.UsageLog)
 	err := RenderTemplate(w, "listspecial.gohtml", &model)
@@ -244,6 +293,8 @@ func IndexPage(w http.ResponseWriter, r *http.Request) {
 	kwd := core.Keyword("")
 	var err error
 
+	activeUser := extractUser(r)
+
 	// model passed into index is the entire DB for now
 	model := ModelIndex{
 		Title:              "The GO2 Redirector",
@@ -254,6 +305,7 @@ func IndexPage(w http.ResponseWriter, r *http.Request) {
 		LinkExists:         false,
 		LinkBeingEdited:    core.LinkZero,
 		RedirectorName:     core.RedirectorName,
+		ActiveUser:         activeUser,
 	}
 
 	err = RenderTemplate(w, "index.gohtml", &model)
@@ -300,14 +352,10 @@ func HandleSpecial(w http.ResponseWriter, r *http.Request, keyword core.Keyword,
 		if ll.Logging {
 			core.LinkLog[keyword] = core.RotateSlice(core.LinkLog[keyword], usage)
 		}
-		// core.LogDebug.Println("LinkLog Entries:")
-		// for _, v := range LinkLog[keyword] {
-		// 	core.LogDebug.Printf("\t%s\n", v)
-		// }
 
 		core.LogDebug.Printf("Special redirect rendered: %s\n", ultimateURL)
 		core.LogInfo.Printf("Redirecting user to: %s\n", ultimateURL)
-		http.Redirect(w, r, ultimateURL, 307)
+		http.Redirect(w, r, ultimateURL, http.StatusTemporaryRedirect)
 		return
 	}
 	// send them off to the create page for a new keyword, as we'd do with a normal keyword
@@ -473,6 +521,8 @@ func RenderListPage(r *http.Request) (string, ModelIndex, error) {
 	// What if the keyword they are entering is similar?
 	// What if any links in their list are functionally identical to what others added?
 
+	activeUser := extractUser(r)
+
 	model = ModelIndex{
 		Title:              "list",
 		LinkDB:             *core.LinkDataBase,
@@ -483,6 +533,7 @@ func RenderListPage(r *http.Request) (string, ModelIndex, error) {
 		LinkBeingEdited:    core.LinkZero,
 		RedirectorName:     core.RedirectorName,
 		ErrorMessage:       "",
+		ActiveUser:         activeUser,
 	}
 
 	// regular lists go to list, special goes to the special page
@@ -523,6 +574,8 @@ func RenderLinkPage(r *http.Request) (string, ModelIndex, error) {
 	url := r.URL.Query().Get("url")
 	link := core.LinkDataBase.GetLink(-1, url)
 
+	activeUser := extractUser(r)
+
 	if link.ID > 0 {
 		core.LogDebug.Printf("Link already exists. We are returning the existing link and modify page.%v", link)
 		// if the link is already there, they can submit a modification to the link.
@@ -536,6 +589,7 @@ func RenderLinkPage(r *http.Request) (string, ModelIndex, error) {
 			LinkExists:         true,
 			LinkBeingEdited:    link,
 			RedirectorName:     core.RedirectorName,
+			ActiveUser:         activeUser,
 		}
 	} else {
 		model = ModelIndex{
@@ -547,6 +601,7 @@ func RenderLinkPage(r *http.Request) (string, ModelIndex, error) {
 			LinkExists:         false,
 			LinkBeingEdited:    core.LinkZero,
 			RedirectorName:     core.RedirectorName,
+			ActiveUser:         activeUser,
 		}
 	}
 	return "editlink.gohtml", model, err
@@ -576,4 +631,17 @@ func RenderTemplate(w http.ResponseWriter, name string, data *ModelIndex) error 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	buf.WriteTo(w)
 	return nil
+}
+
+// Extract the user login name from any cookies presented in their requests.
+// The cookie name will be 'redirectorlogin' and the value is their login name.
+func extractUser(r *http.Request) string {
+	if len(r.Cookies()) > 0 {
+		for _, c := range r.Cookies() {
+			if c.Name == "redirectorlogin" {
+				return c.Value
+			}
+		}
+	}
+	return ""
 }

@@ -22,6 +22,7 @@
                   <input type="hidden" name="keyword" value="{{ .Keyword }}"/>
                   <input type="hidden" name="internal" value="true"/>
                 </div>
+                {{ if ne .ActiveUser "" }}
                 <select class="form-control" name="behavior">
                   <option value="-1" {{ if eq $behavior "-1" }}selected{{ end }}>this page</option>
                   <option value="-2" {{ if eq $behavior "-2" }}selected{{ end }}>freshest link</option>
@@ -33,10 +34,18 @@
                   <option value="{{ .ID }}" {{ if eq $behavior $idstring }}selected{{ end }}>{{ .Title }}</option>
                   {{ end }}
                 </select>
-
-                <div class="input-group-append">
-                  <button class="btn btn-outline-secondary" type="submit" value="Change Behavior">Change Behavior</button>
+                {{ else }}
+                {{/* they are not logged in */}}
+                <div class="input-group-prepend">
+                <label class="input-group-text">{{ .PrettyBehavior }}</label>
                 </div>
+                {{ end }}
+
+                {{ if ne .ActiveUser "" }}
+                <div class="input-group-append">
+                  <button class="btn btn-outline-secondary" type="submit" value="Change Behavior"}>Change Behavior</button>
+                </div>
+                {{ end }}
               </div>
             </form>
             <div>
@@ -50,7 +59,11 @@
               <h4 class="center">No links for this keyword: <span class="go2keyword go2keyword-large">{{ .Keyword }}</span></h4>
               <a role="button" class="btn btn-primary btn-block-go2" title="Edit this link" href="/_link_/0?returnto={{ .Keyword }}">Create new keyword by adding the first link</a>
           {{ else }}
+        {{ if ne .ActiveUser "" }}
         <a role="button" class="btn btn-primary btn-block-go2" title="Edit this link" href="/_link_/0?returnto={{ .Keyword }}">Add New Link</a>
+        {{ else }}
+        <a role="button" class="btn btn-primary btn-block-go2" title="Edit this link">Login to add a link</a>
+        {{ end }}
         <table class="table">
           <thead>
             <tr>
@@ -92,14 +105,12 @@
                 {{ end }}
               </td>
               <td><span class="go2keyword go2keyword-small">{{ .Lists }}</span></td>
-              <td><a role="button" class="btn btn-outline-secondary btn-sm" title="Edit link #{{ .ID }}" href="/_link_/{{ .ID }}?returnto={{ $.Keyword }}">edit</a></td>
+              <td><a role="button" class="btn btn-outline-secondary btn-sm" title="Edit link #{{ .ID }}" href="/_link_/{{ .ID }}?returnto={{ $.Keyword }}">{{ if ne $.ActiveUser "" }}edit{{ else }}view{{ end }}</a></td>
             </tr>
           {{- end }}
           </tbody>
         </table>
         {{- end }}
-
-
 
       </div>
     </div>

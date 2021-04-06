@@ -221,7 +221,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 
 			if internal {
 				// The template called this, so 302 to the dotpage for this keyword.
-				http.Redirect(w, r, fmt.Sprintf("/.%s", kw), 302)
+				http.Redirect(w, r, fmt.Sprintf("/.%s", kw), http.StatusFound)
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")

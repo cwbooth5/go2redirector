@@ -21,7 +21,9 @@
                       <tr>
                         <td><a href="/.{{ index .Lists 0 }}" class="go2keyword go2keyword-small" title="{{ index .Lists 0 }}">{{ index .Lists 0 }}</a></td>
                         <td>{{ if .Special }}<a title="{{ .URL }}">{{ .Title }}</a>{{ else }}<a href="/.{{ index .Lists 0 }}"><span>{{ .Title }}</span></a>{{ end }} </td>
+                        {{ if ne $.ActiveUser "" }}
                         <td><a role="button" class="btn btn-outline-secondary btn-sm" title="Edit link #{{ .ID }}" href="/_link_/{{ .ID }}?returnto={{ index .Lists 0 }}">edit</a></td>
+                        {{ end }}
                       </tr>
                     {{- end }}
                   {{- end }}
@@ -48,7 +50,9 @@
                     <tr>
                       <td>{{ if .Special }}<a title="{{ .URL }}">{{ .Title }}</a>{{ else }}<a href="{{ .URL }}"><span>{{ .Title }}</span></a>{{ end }}</td>
                       <td><span class="go2keyword go2keyword-small">{{ .Lists }}</span></td>
+                      {{ if ne $.ActiveUser "" }}
                       <td><a role="button" class="btn btn-outline-secondary btn-sm" title="Edit link #{{ .ID }}" href="/_link_/{{ .ID }}?returnto={{ index .Lists 0 }}">edit</a></td>
+                      {{ end }}
                     </tr>
                   {{- end }}
                   {{- end }}

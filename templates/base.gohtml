@@ -28,7 +28,29 @@
             {{ if or .KeywordExists .Keyword }}<p class="go2keyword go2keyword-large">{{ .Keyword }}</p>{{ else }}<form id="go2outerform" class="form-control" action="/"><input id="go2input" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" aria-label="Large" aria-describedby="inputGroup-sizing-sm" type="text" name="keyword" size="12" value=""/></form>{{ end }}
         </div>
     </div>
-    {{/* <div class="p-2">help</div> */}}
+    <div class="p-2">
+    <form action="/_login_" method="POST">
+        {{ if ne .ActiveUser "" }}
+
+        <input type="hidden" name="delete" value="true"/>
+        {{ .ActiveUser }} <button class="btn btn-link" type="submit">Log Out</button>
+
+        {{ else }}
+
+        <div class="input-group input-group-sm">
+        <input type="text" name="loginname" class="form-control" placeholder="login to edit">
+        <div class="input-group-append">
+        <button class="btn btn-block-go2" type="submit">Log In</button>
+        </div>
+        </div>
+
+        {{ end }}
+    </form>
+
+
+    {{/* <a href="_login_">Login</a> */}}
+    
+    </div>
     <div class="p-2">
         <a role="button" data-bs-toggle="modal" data-bs-target="#setupModal" style="color:#DB6574;">Setup</a>
     </div>
@@ -74,7 +96,6 @@
                 {{ end }}
             {{ end }}
             {{- end }}
-            {{/* <li class="breadcrumb-item active" aria-current="page">Link</li> */}}
         </ol>
         </nav>
     </div>

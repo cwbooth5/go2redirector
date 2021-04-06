@@ -34,6 +34,7 @@ type ModelIndex struct {
 	KeywordParams      []string
 	UsageLog           []string
 	ErrorMessage       string
+	ActiveUser         string // empty string means not logged in
 }
 
 // GetBehavior returns a string representation of the behavior for a model's keyword.
@@ -47,6 +48,21 @@ func (m *ModelIndex) GetBehavior() string {
 	behavior := core.LinkDataBase.Lists[m.Keyword].Behavior
 	res := strconv.Itoa(behavior)
 	return res
+}
+
+func (m *ModelIndex) PrettyBehavior() string {
+	switch m.GetBehavior() {
+	case "-1":
+		return "this page"
+	case "-2":
+		return "freshest link"
+	case "-3":
+		return "most used link"
+	case "-4":
+		return "random link"
+	default:
+		return ""
+	}
 }
 
 func (m *ModelIndex) ListURL() string {
