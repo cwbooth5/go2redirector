@@ -31,25 +31,17 @@
     <div class="p-2">
     <form action="/_login_" method="POST">
         {{ if ne .ActiveUser "" }}
-
         <input type="hidden" name="delete" value="true"/>
         {{ .ActiveUser }} <button class="btn btn-link" type="submit">Log Out</button>
-
         {{ else }}
-
         <div class="input-group input-group-sm">
         <input type="text" name="loginname" class="form-control" placeholder="login to edit">
         <div class="input-group-append">
         <button class="btn btn-block-go2" type="submit">Log In</button>
         </div>
         </div>
-
         {{ end }}
     </form>
-
-
-    {{/* <a href="_login_">Login</a> */}}
-    
     </div>
     <div class="p-2">
         <a role="button" data-bs-toggle="modal" data-bs-target="#setupModal" style="color:#DB6574;">Setup</a>
@@ -100,9 +92,6 @@
         </nav>
     </div>
 </div>
-
-
-
         {{ template "content" . }}
     </div>
 
