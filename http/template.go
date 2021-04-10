@@ -182,3 +182,10 @@ func (m *ModelIndex) GetMyList(k core.Keyword) *core.ListOfLinks {
 	// kwd, _ := makeNewKeyword(k)
 	return core.LinkDataBase.Lists[k]
 }
+
+// Return the configuration external_address value for use in templates.
+// This does not contain the http or https prefixes, which would be nice to have
+// since the external full URL could potentially use either protocol.
+func (m *ModelIndex) GetExternalRedirectorAddress() string {
+	return core.ExternalAddress
+}

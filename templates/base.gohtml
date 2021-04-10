@@ -25,27 +25,37 @@
     <div class="p-2 flex-grow-1">
         <div class="input-group">
             <a href="/" title="Redirector home" id="titletext">{{ .RedirectorName }}/</a>
-            {{ if or .KeywordExists .Keyword }}<p class="go2keyword go2keyword-large">{{ .Keyword }}</p>{{ else }}<form id="go2outerform" class="form-control" action="/"><input id="go2input" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" aria-label="Large" aria-describedby="inputGroup-sizing-sm" type="text" name="keyword" size="12" value=""/></form>{{ end }}
+            {{ if or .KeywordExists .Keyword }}<p class="go2keyword go2keyword-large">{{ .Keyword }}</p>{{ else }}<form id="go2outerform" class="form-control" action="/"><input id="go2input" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" aria-label="Large" aria-describedby="inputGroup-sizing-sm" type="text" name="keyword" size="12" value="" placeholder="enter a keyword"/></form>{{ end }}
         </div>
     </div>
+
+    <div class="p-2">
+        <a role="button" data-bs-toggle="modal" data-bs-target="#setupModal" style="color:#DB6574;">Setup</a>
+    </div>
+
     <div class="p-2">
     <form action="/_login_" method="POST">
         {{ if ne .ActiveUser "" }}
         <input type="hidden" name="delete" value="true"/>
-        {{ .ActiveUser }} <button class="btn btn-link" type="submit">Log Out</button>
+        {{/* {{ .ActiveUser }} <button class="btn btn-link" type="submit">Log Out</button> */}}
+
+        <div class="input-group input-group-sm">
+        <input type="text" name="loginname" class="form-control" placeholder="{{ .ActiveUser }}" size="15" disabled>
+        <div class="input-group-append">
+        <button class="btn-primary btn-block-go2login" type="submit">Log Out</button>
+        </div>
+        </div>
         {{ else }}
         <div class="input-group input-group-sm">
-        <input type="text" name="loginname" class="form-control" placeholder="login to edit">
+        <input type="text" name="loginname" class="form-control" placeholder="login to edit" size="15">
         <div class="input-group-append">
-        <button class="btn btn-block-go2" type="submit">Log In</button>
+        <button class="btn-primary btn-block-go2login" type="submit">Log In</button>
         </div>
         </div>
         {{ end }}
     </form>
     </div>
-    <div class="p-2">
-        <a role="button" data-bs-toggle="modal" data-bs-target="#setupModal" style="color:#DB6574;">Setup</a>
-    </div>
+
 </div>
 
 <div class="d-flex">
@@ -94,9 +104,6 @@
 </div>
         {{ template "content" . }}
     </div>
-
-
-
     <!-- Setup Modal -->
     <div class="modal fade" id="setupModal" tabindex="-1" aria-labelledby="setupModalLabel" aria-hidden="true">
     <div class="modal-dialog" style="color:black;">
@@ -125,7 +132,7 @@
                 <li>Click the "Add' button.</li>
                 <li>For the Search engine field, choose a descriptive name.</li>
                 <li>Set a keyword of: <strong>{{ .RedirectorName }}</strong></li>
-                <li>For the URL, enter <strong>http://go2.url/?keyword=%s</strong></li>
+                <li>For the URL, enter <strong>http://{{ .GetExternalRedirectorAddress }}/?keyword=%s</strong></li>
                 </ul>
             </li>
             </ul>

@@ -88,7 +88,6 @@ func (d LinkDatabase) ExportNetwork() error {
 // It needs to be improved to only send incremental updates.
 func SendUpdates(ldb *LinkDatabase) {
 	for {
-		LogDebug.Println("send update called...")
 		time.Sleep(1 * time.Second)
 		ldb.ExportNetwork()
 	}

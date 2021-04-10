@@ -49,9 +49,6 @@
               </div>
             </form>
             <div>
-              {{/* {{ if ne $behavior "-1" }}
-              <samp class="center">{{ .ListURL }}</samp>
-              {{- end }} */}}
             </div>
           </div>
           {{- end }}
@@ -62,7 +59,7 @@
         {{ if ne .ActiveUser "" }}
         <a role="button" class="btn btn-primary btn-block-go2" title="Edit this link" href="/_link_/0?returnto={{ .Keyword }}">Add New Link</a>
         {{ else }}
-        <a role="button" class="btn btn-primary btn-block-go2" title="Edit this link">Login to add a link</a>
+        <a role="button" class="btn btn-primary btn-block-go2" title="Edit this link">Login above to add a link</a>
         {{ end }}
         <table class="table">
           <thead>
