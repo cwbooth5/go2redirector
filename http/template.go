@@ -61,7 +61,8 @@ func (m *ModelIndex) PrettyBehavior() string {
 	case "-4":
 		return "random link"
 	default:
-		return ""
+		// The list redirects to a specific link. Get its title.
+		return m.LinkDB.GetLink(core.LinkDataBase.Lists[m.Keyword].Behavior, "").Title
 	}
 }
 

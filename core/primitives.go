@@ -481,9 +481,8 @@ func (d *LinkDatabase) CommitNewLink(l *Link) (int, error) {
 	return id, err
 }
 
-/* Get a link object by ID or URL. */
+// Get a link object by ID or URL.
 func (d *LinkDatabase) GetLink(id int, url string) *Link {
-
 	for _, lnk := range d.Links {
 		if lnk.ID == id || lnk.URL == url {
 			return lnk
