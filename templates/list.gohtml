@@ -101,7 +101,13 @@
                 <a title="{{ .URL }}">"{{ .Title }}"</a><br>
                 {{ end }}
               </td>
-              <td><span class="go2keyword go2keyword-small">{{ .Lists }}</span></td>
+              <td>
+                <span class="go2keyword go2keyword-small">[</span>
+                {{ range $listname := .Lists }}
+                <a title="View keyword '{{ $listname }}'" href="/.{{ . }}"><span class="go2keyword go2keyword-small">{{ $listname }}</span></a>
+                {{ end }}
+                <span class="go2keyword go2keyword-small">]</span>
+              </td>
               <td><a role="button" class="btn btn-outline-secondary btn-sm" title="Edit link #{{ .ID }}" href="/_link_/{{ .ID }}?returnto={{ $.Keyword }}">{{ if ne $.ActiveUser "" }}edit{{ else }}view{{ end }}</a></td>
             </tr>
           {{- end }}
