@@ -146,17 +146,16 @@
                 </tr>
               {{ end }}
         </table>
-
+        {{/* metadata */}}
         {{ $loggedin := ne .ActiveUser "" }}
         {{ if and .KeywordExists $loggedin }}
         <table class="table">
-        <h3>Edit History</h3>
-        {{/* metadata */}}
+        <h3>Recent Edits</h3>
         <tr>
         <thead>
-        <th>time</th>
-        <th>editor</th>
-        <th></th>
+        <th>Time</th>
+        <th>Editor</th>
+        <th>Message</th>
         </thead>
         {{ range .GetListEdits .Keyword }}
         <tr><td>{{ $.PrettyTime .EditDate }}</td><td>{{ .EditUser }}</td><td>{{ .EditMsg }}</td></tr>
@@ -164,10 +163,6 @@
         </tr>
         </table>
         {{ end }}
-
-
-
-
       </div>
     </div>
 </div> <!-- container-fluid -->

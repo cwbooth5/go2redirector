@@ -89,6 +89,7 @@ func Shutdown() {
 	//TODO: actual cleanup code. dump db to disk
 	LogInfo.Println("Signal caught. Shutting down...")
 	LinkDataBase.Export(GodbFileName)
+	RedirectorMetadata.Export("go2metadata.json")
 }
 
 // CheckpointDB saves a copy of the link database at a provided interval (a time duration string).
@@ -124,6 +125,17 @@ func RotateSlice(s []string, val string) []string {
 		s = s[:LinkLogCapacity]
 	}
 	return s
+}
+
+func PrependEdit(e []*EditRecord, val *EditRecord) []*EditRecord {
+	// var blank *EditRecord
+	e = append(e, &EditRecord{})
+	copy(e[1:], e[0:])
+	e[0] = val
+	if len(e) > 5 {
+		e = e[:5]
+	}
+	return e
 }
 
 // FormatRequest generates ascii representation of a request

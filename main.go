@@ -462,6 +462,14 @@ func main() {
 			//core.LogDebug.Fatalf("Could not load link database from file %s\n", importPath)
 		}
 
+		// If the file is found on disk, init metadata with that file.
+		// Metadata is initialized empty before this, so an error is ingnored for now and we default to "empty metadata"
+		meta, metaerr := core.RedirectorMetadata.Import("go2metadata.json")
+		if metaerr == nil {
+			core.LogDebug.Println("Edit metadata found on disk and loaded: go2metadata.json")
+			core.RedirectorMetadata = &meta
+		}
+
 		// When we go active and we have a peer, we will start sending regular updates to
 		// that peer indefinitely.
 		if core.FailoverPeer != "" {

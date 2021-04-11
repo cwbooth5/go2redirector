@@ -457,8 +457,6 @@ func (d *LinkDatabase) Couple(ll *ListOfLinks, linkObj *Link) {
 	if !present { // do not add membership if it is already present
 		linkObj.Lists = append(linkObj.Lists, ll.Keyword)
 	}
-	// RedirectorMetadata.ListEdits[ll.Keyword] = append(RedirectorMetadata.ListEdits[ll.Keyword], fmt.Sprintf("link %d was coupled with this list", linkObj.ID))
-	RedirectorMetadata.ListEdits[ll.Keyword] = append(RedirectorMetadata.ListEdits[ll.Keyword], new(EditRecord))
 	ll.Links[linkObj.ID] = linkObj
 }
 
@@ -479,7 +477,6 @@ func (d *LinkDatabase) CommitNewLink(l *Link) (int, error) {
 		id = l.ID
 	}
 	LogDebug.Printf("New link with ID %d was added.\n", l.ID)
-	RedirectorMetadata.LinkEdits[l.ID] = append(RedirectorMetadata.LinkEdits[l.ID], new(EditRecord))
 	return id, err
 }
 
@@ -551,4 +548,4 @@ func (d *LinkDatabase) TopLists(count int) []*ListOfLinks {
 	return listPile[:count]
 }
 
-var RedirectorMetadata = MakeNewMetadata(LinkDataBase)
+var RedirectorMetadata = MakeNewMetadata()

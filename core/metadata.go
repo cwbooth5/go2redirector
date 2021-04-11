@@ -1,7 +1,8 @@
 package core
 
 import (
-	"fmt"
+	"encoding/json"
+	"io/ioutil"
 	"time"
 )
 
@@ -19,9 +20,9 @@ For links, the id is used to locate edit records.
 // EditRecord holds what amounts to a line in a log file.
 // It contains the date things were done, the person who did it, and the message.
 type EditRecord struct {
-	EditDate time.Time
-	EditMsg  string
-	EditUser string
+	EditDate time.Time `json:"edit_date"`
+	EditMsg  string    `json:"edit_msg"`
+	EditUser string    `json:"edit_user"`
 }
 
 // Metadata holds all list/link edits.
@@ -32,17 +33,42 @@ type Metadata struct {
 }
 
 // This is called to initialize the in-memory metadata for all lists and links.
-func MakeNewMetadata(d *LinkDatabase) *Metadata {
+func MakeNewMetadata() *Metadata {
 	// go through all lists and links, creating their corresponding metadata with empty values.
 	var m *Metadata
 	m = new(Metadata)
 	m.ListEdits = make(map[Keyword][]*EditRecord)
 	m.LinkEdits = make(map[int][]*EditRecord)
-	fmt.Printf("Metadata created: %s\n", m)
-
 	return m
 }
 
-func LoadMetaData(filepath string) error {
-	return nil
+func (m *Metadata) Import(f string) (Metadata, error) {
+	var tempdata Metadata
+	var err error
+	data, err := ioutil.ReadFile(f)
+	if err != nil {
+		LogError.Printf("No edit metadata file '%s' was found\n", f)
+		return tempdata, err
+	}
+
+	err = json.Unmarshal(data, &tempdata)
+	if err != nil {
+		LogError.Printf("json parsing error: %s", err)
+		return tempdata, err
+	}
+	return tempdata, err
+}
+
+func (m *Metadata) Export(f string) error {
+	file, err := json.Marshal(*m)
+	if err != nil {
+		LogError.Println("JSON marshal error:", err)
+		return err
+	}
+	err = ioutil.WriteFile(f, file, 0644)
+	if err != nil {
+		LogError.Fatal(err)
+	}
+	LogInfo.Printf("Link metadata exported to %s.\n", f)
+	return err
 }

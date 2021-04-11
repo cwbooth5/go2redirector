@@ -117,7 +117,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 				core.LinkDataBase.Decouple(ll, inboundLink)
 				// link edit metadata
 				deleteEdit := core.EditRecord{EditDate: now, EditUser: core.ExtractUser(r), EditMsg: fmt.Sprintf("link decoupled: %s", inboundLink.URL)}
-				core.RedirectorMetadata.ListEdits[ll.Keyword] = append(core.RedirectorMetadata.ListEdits[ll.Keyword], &deleteEdit)
+				core.RedirectorMetadata.ListEdits[ll.Keyword] = core.PrependEdit(core.RedirectorMetadata.ListEdits[ll.Keyword], &deleteEdit)
 
 				if internal {
 					// The template called this, so 302 to the dotpage for this keyword.
@@ -152,7 +152,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 				newLinkEdit = core.EditRecord{EditDate: now, EditUser: core.ExtractUser(r), EditMsg: fmt.Sprintf("link modified: %s", inboundLink.URL)}
 			}
 			// link edit metadata
-			core.RedirectorMetadata.LinkEdits[outboundLink.ID] = append(core.RedirectorMetadata.LinkEdits[outboundLink.ID], &newLinkEdit)
+			core.RedirectorMetadata.LinkEdits[outboundLink.ID] = core.PrependEdit(core.RedirectorMetadata.LinkEdits[outboundLink.ID], &newLinkEdit)
 
 			// existing links will be coupled further down
 
@@ -169,12 +169,12 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 				otherListEdit := core.EditRecord{EditDate: now, EditUser: core.ExtractUser(r), EditMsg: fmt.Sprintf("link coupled: %s, tags: %s", inboundLink.URL, allTags)}
 				if ll, exists := core.LinkDataBase.Lists[kwd]; exists {
 					core.LinkDataBase.Couple(ll, inboundLink)
-					core.RedirectorMetadata.ListEdits[ll.Keyword] = append(core.RedirectorMetadata.ListEdits[ll.Keyword], &otherListEdit)
+					core.RedirectorMetadata.ListEdits[ll.Keyword] = core.PrependEdit(core.RedirectorMetadata.ListEdits[ll.Keyword], &otherListEdit)
 				} else {
 					// The other list they were trying to add to doesn't exist. No problem. Create it.
 					newList := core.MakeNewList(kwd, inboundLink)
 					core.LinkDataBase.Couple(newList, inboundLink)
-					core.RedirectorMetadata.ListEdits[newList.Keyword] = append(core.RedirectorMetadata.ListEdits[newList.Keyword], &otherListEdit)
+					core.RedirectorMetadata.ListEdits[newList.Keyword] = core.PrependEdit(core.RedirectorMetadata.ListEdits[newList.Keyword], &otherListEdit)
 				}
 				allMemberships = append(allMemberships, kwd)
 				core.LogDebug.Printf("Coupling link to otherlist '%s'", kwd)
@@ -194,7 +194,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 
 			// link edit metadata
 			listEdit := core.EditRecord{EditDate: now, EditUser: core.ExtractUser(r), EditMsg: fmt.Sprintf("link coupled: %s, tags: %s", inboundLink.URL, allTags)}
-			core.RedirectorMetadata.ListEdits[ll.Keyword] = append(core.RedirectorMetadata.ListEdits[kw], &listEdit)
+			core.RedirectorMetadata.ListEdits[ll.Keyword] = core.PrependEdit(core.RedirectorMetadata.ListEdits[kw], &listEdit)
 
 			if internal {
 				// The template called this, so 302 to the dotpage for this keyword.
@@ -241,7 +241,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			if previousBehavior != requestedBehavior { // handle the case where they just clicked the button with no changes
 				// edit metadata on the list
 				editmsg := fmt.Sprintf("behavior changed from '%s' to '%s'", core.GetPrettyBehaviorString(previousBehavior), core.GetPrettyBehaviorString(requestedBehavior))
-				core.RedirectorMetadata.ListEdits[kw] = append(core.RedirectorMetadata.ListEdits[kw], &core.EditRecord{EditDate: time.Now(), EditUser: core.ExtractUser(r), EditMsg: editmsg})
+				core.RedirectorMetadata.ListEdits[kw] = core.PrependEdit(core.RedirectorMetadata.ListEdits[kw], &core.EditRecord{EditDate: time.Now(), EditUser: core.ExtractUser(r), EditMsg: editmsg})
 			}
 
 			if internal {

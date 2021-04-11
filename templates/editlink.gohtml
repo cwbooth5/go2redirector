@@ -297,38 +297,19 @@ window.addEventListener('load', function() {
                   {{ end }}
                 </td>
               </tr>
-
-              {{/* <tr>
-                <td>
-                  <div>
-                  We can show how your link will render here:<br>
-                  <samp>
-                    <p>{{ .LinkBeingEdited.GetURL }}</p>
-                  </samp>
-                  </div>
-                </td>
-              </tr> */}}
-              <tr>
-              {{ if ne .LinkBeingEdited.ID 0 }}
-              <td>
-              Link Created: {{ $.PrettyTime .LinkBeingEdited.Ctime }}<br>
-              Link Modified: {{ $.PrettyTime .LinkBeingEdited.Mtime }}
-              </td>
-              {{- end }}              
-              </tr>
             </table>
 
             {{ $loggedin := ne .ActiveUser "" }}
             {{ $notdefault := ne .LinkBeingEdited.ID 0 }}
             {{ if and $loggedin $notdefault }}
-            <h3>Edit History</h3>
+            <h3>Recent Edits</h3>
             <table class="table">
               {{/* metadata */}}
               <tr>
               <thead>
-              <th>time</th>
-              <th>editor</th>
-              <th></th>
+              <th>Time</th>
+              <th>Editor</th>
+              <th>Message</th>
               </thead>
 
               {{ range .GetLinkEdits .LinkBeingEdited.ID }}
