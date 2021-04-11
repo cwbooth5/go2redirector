@@ -190,3 +190,13 @@ func (m *ModelIndex) GetMyList(k core.Keyword) *core.ListOfLinks {
 func (m *ModelIndex) GetExternalRedirectorAddress() string {
 	return core.ExternalAddress
 }
+
+func (m *ModelIndex) GetListEdits(k core.Keyword) []*core.EditRecord {
+	return core.RedirectorMetadata.ListEdits[k]
+	// r := []string{"your", "mother", "trebek"}
+	// return r
+}
+
+func (m *ModelIndex) GetLinkEdits(id int) []*core.EditRecord {
+	return core.RedirectorMetadata.LinkEdits[id]
+}

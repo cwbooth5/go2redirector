@@ -147,6 +147,27 @@
               {{ end }}
         </table>
 
+        {{ $loggedin := ne .ActiveUser "" }}
+        {{ if and .KeywordExists $loggedin }}
+        <table class="table">
+        <h3>Edit History</h3>
+        {{/* metadata */}}
+        <tr>
+        <thead>
+        <th>time</th>
+        <th>editor</th>
+        <th></th>
+        </thead>
+        {{ range .GetListEdits .Keyword }}
+        <tr><td>{{ $.PrettyTime .EditDate }}</td><td>{{ .EditUser }}</td><td>{{ .EditMsg }}</td></tr>
+        {{ end }}
+        </tr>
+        </table>
+        {{ end }}
+
+
+
+
       </div>
     </div>
 </div> <!-- container-fluid -->

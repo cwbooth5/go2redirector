@@ -34,7 +34,7 @@ func RouteLink(w http.ResponseWriter, r *http.Request) {
 	// POST requests will
 	requestDump, err := httputil.DumpRequest(r, true)
 
-	activeUser := extractUser(r)
+	activeUser := core.ExtractUser(r)
 
 	if err != nil {
 		fmt.Println(err)
@@ -218,7 +218,7 @@ func RouteLogin(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		var theirName string
 		theirPostName := r.PostFormValue("loginname")
-		theirCookieName := extractUser(r)
+		theirCookieName := core.ExtractUser(r)
 		if theirPostName != "" {
 			theirName = theirPostName
 		} else {
@@ -260,7 +260,7 @@ func routeSpecialListPage(w http.ResponseWriter, r *http.Request, keyword core.K
 		kwdExists = true
 	}
 
-	activeUser := extractUser(r)
+	activeUser := core.ExtractUser(r)
 
 	// Regarding the params: It's going to come in as an array of strings. (might want to change to just string later - TODO)
 	model = ModelIndex{
@@ -293,7 +293,7 @@ func IndexPage(w http.ResponseWriter, r *http.Request) {
 	kwd := core.Keyword("")
 	var err error
 
-	activeUser := extractUser(r)
+	activeUser := core.ExtractUser(r)
 
 	// model passed into index is the entire DB for now
 	model := ModelIndex{
@@ -521,7 +521,7 @@ func RenderListPage(r *http.Request) (string, ModelIndex, error) {
 	// What if the keyword they are entering is similar?
 	// What if any links in their list are functionally identical to what others added?
 
-	activeUser := extractUser(r)
+	activeUser := core.ExtractUser(r)
 
 	model = ModelIndex{
 		Title:              "list",
@@ -574,7 +574,7 @@ func RenderLinkPage(r *http.Request) (string, ModelIndex, error) {
 	url := r.URL.Query().Get("url")
 	link := core.LinkDataBase.GetLink(-1, url)
 
-	activeUser := extractUser(r)
+	activeUser := core.ExtractUser(r)
 
 	if link.ID > 0 {
 		core.LogDebug.Printf("Link already exists. We are returning the existing link and modify page.%v", link)
@@ -631,17 +631,4 @@ func RenderTemplate(w http.ResponseWriter, name string, data *ModelIndex) error 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	buf.WriteTo(w)
 	return nil
-}
-
-// Extract the user login name from any cookies presented in their requests.
-// The cookie name will be 'redirectorlogin' and the value is their login name.
-func extractUser(r *http.Request) string {
-	if len(r.Cookies()) > 0 {
-		for _, c := range r.Cookies() {
-			if c.Name == "redirectorlogin" {
-				return c.Value
-			}
-		}
-	}
-	return ""
 }

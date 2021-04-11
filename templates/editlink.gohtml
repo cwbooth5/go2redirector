@@ -314,9 +314,29 @@ window.addEventListener('load', function() {
               Link Created: {{ $.PrettyTime .LinkBeingEdited.Ctime }}<br>
               Link Modified: {{ $.PrettyTime .LinkBeingEdited.Mtime }}
               </td>
-              {{- end }}
+              {{- end }}              
               </tr>
             </table>
+
+            {{ $loggedin := ne .ActiveUser "" }}
+            {{ $notdefault := ne .LinkBeingEdited.ID 0 }}
+            {{ if and $loggedin $notdefault }}
+            <h3>Edit History</h3>
+            <table class="table">
+              {{/* metadata */}}
+              <tr>
+              <thead>
+              <th>time</th>
+              <th>editor</th>
+              <th></th>
+              </thead>
+
+              {{ range .GetLinkEdits .LinkBeingEdited.ID }}
+              <tr><td>{{ $.PrettyTime .EditDate }}</td><td>{{ .EditUser }}</td><td>{{ .EditMsg }}</td></tr>
+              {{ end }}
+            </table>
+            {{ end }}
+
           </form>
         </div>
       </div>

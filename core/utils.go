@@ -357,3 +357,33 @@ func ParsePath(s string) (Gpath, error) {
 	// LogDebug.Printf("gpath: %s\n", gp)
 	return gp, err
 }
+
+// Extract the user login name from any cookies presented in their requests.
+// The cookie name will be 'redirectorlogin' and the value is their login name.
+func ExtractUser(r *http.Request) string {
+	if len(r.Cookies()) > 0 {
+		for _, c := range r.Cookies() {
+			if c.Name == "redirectorlogin" {
+				return c.Value
+			}
+		}
+	}
+	return ""
+}
+
+// This returns a human-readable behavior or a link title if direct is selected as the behavior.
+func GetPrettyBehaviorString(b int) string {
+	switch b {
+	case -1:
+		return "this page"
+	case -2:
+		return "freshest link"
+	case -3:
+		return "most used link"
+	case -4:
+		return "random link"
+	default:
+		// The list redirects to a specific link. Get its title.
+		return LinkDataBase.Links[b].Title
+	}
+}
