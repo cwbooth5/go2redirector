@@ -34,6 +34,7 @@ type ModelIndex struct {
 	KeywordParams      []string
 	UsageLog           []string
 	ErrorMessage       string
+	ActiveUser         string // empty string means not logged in
 }
 
 // GetBehavior returns a string representation of the behavior for a model's keyword.
@@ -47,6 +48,22 @@ func (m *ModelIndex) GetBehavior() string {
 	behavior := core.LinkDataBase.Lists[m.Keyword].Behavior
 	res := strconv.Itoa(behavior)
 	return res
+}
+
+func (m *ModelIndex) PrettyBehavior() string {
+	switch m.GetBehavior() {
+	case "-1":
+		return "this page"
+	case "-2":
+		return "freshest link"
+	case "-3":
+		return "most used link"
+	case "-4":
+		return "random link"
+	default:
+		// The list redirects to a specific link. Get its title.
+		return m.LinkDB.GetLink(core.LinkDataBase.Lists[m.Keyword].Behavior, "").Title
+	}
 }
 
 func (m *ModelIndex) ListURL() string {
@@ -165,4 +182,21 @@ func (m *ModelIndex) IdentifyBuild() string {
 func (m *ModelIndex) GetMyList(k core.Keyword) *core.ListOfLinks {
 	// kwd, _ := makeNewKeyword(k)
 	return core.LinkDataBase.Lists[k]
+}
+
+// Return the configuration external_address value for use in templates.
+// This does not contain the http or https prefixes, which would be nice to have
+// since the external full URL could potentially use either protocol.
+func (m *ModelIndex) GetExternalRedirectorAddress() string {
+	return core.ExternalAddress
+}
+
+func (m *ModelIndex) GetListEdits(k core.Keyword) []*core.EditRecord {
+	return core.RedirectorMetadata.ListEdits[k]
+	// r := []string{"your", "mother", "trebek"}
+	// return r
+}
+
+func (m *ModelIndex) GetLinkEdits(id int) []*core.EditRecord {
+	return core.RedirectorMetadata.LinkEdits[id]
 }

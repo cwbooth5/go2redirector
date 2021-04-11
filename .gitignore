@@ -23,3 +23,4 @@ godb.json*
 dist/
 redirector.log
 go2redirector
+go2metadata.json

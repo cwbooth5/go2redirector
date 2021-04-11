@@ -83,9 +83,9 @@ window.addEventListener('load', function() {
         {{/* This duplicated block of code here is only here for one hacky reason. Users hitting 'Enter' on any form field will trigger the top
         submit button on the form visually. Putting it here and making it invisible makes Enter == "Submit new link". */}}
         {{ if .LinkExists }}
-        <button class="visually-hidden" type="submit" title="Submit Changes" value="Submit Changes">Submit Changes</button>
+        <button class="visually-hidden" type="submit" title="Submit Changes" value="Submit Changes" {{ if eq .ActiveUser "" }}disabled{{ end }}>Submit Changes</button>
         {{ else }}
-        <button class="visually-hidden" type="submit" title="Submit New Link" value="Submit Link">Submit New Link</button>
+        <button class="visually-hidden" type="submit" title="Submit New Link" value="Submit Link" {{ if eq .ActiveUser "" }}disabled{{ end }}>Submit New Link</button>
         {{ end }}
         {{/* END of duplicated button code block */}}
 
@@ -237,11 +237,11 @@ window.addEventListener('load', function() {
             <td>
             <a role="button" class="btn btn-outline-secondary" title="Cancel and go back" href="/.{{ .Keyword }}">Cancel</a>
               {{ if .LinkExists }}
-              <button class="btn btn-outline-secondary" type="submit" title="Remove link from this list only" value="true" name="delete">Unlink from <span style="color: #4dc5d9 !important;">{{ .Keyword }}</span></button>
-              <button class="btn btn-primary" type="submit" title="Submit Changes" value="Submit Changes">Submit Changes</button>
+              <button class="btn btn-outline-secondary" type="submit" title="Remove link from this list only" value="true" name="delete"{{ if eq .ActiveUser "" }}disabled{{ end }}>Unlink from <span style="color: #4dc5d9 !important;">{{ .Keyword }}</span></button>
+              <button class="btn btn-primary" type="submit" title="Submit Changes" value="Submit Changes"{{ if eq .ActiveUser "" }}disabled{{ end }}>Submit Changes</button>
               <!-- <button class="btn btn-danger btn-sm" type="submit" title="Remove link from this list" value="decouple" name="delete">Unlink From <b>{{ .Keyword }}</b></button> -->
               {{ else }}
-              <button class="btn btn-primary" type="submit" title="Submit New Link" value="Submit Link">Submit New Link</button>
+              <button class="btn btn-primary" type="submit" title="Submit New Link" value="Submit Link"{{ if eq .ActiveUser "" }}disabled{{ end }}>Submit New Link</button>
               {{ end }}
             </td>
           </tr>
@@ -297,26 +297,27 @@ window.addEventListener('load', function() {
                   {{ end }}
                 </td>
               </tr>
-
-              {{/* <tr>
-                <td>
-                  <div>
-                  We can show how your link will render here:<br>
-                  <samp>
-                    <p>{{ .LinkBeingEdited.GetURL }}</p>
-                  </samp>
-                  </div>
-                </td>
-              </tr> */}}
-              <tr>
-              {{ if ne .LinkBeingEdited.ID 0 }}
-              <td>
-              Link Created: {{ $.PrettyTime .LinkBeingEdited.Ctime }}<br>
-              Link Modified: {{ $.PrettyTime .LinkBeingEdited.Mtime }}
-              </td>
-              {{- end }}
-              </tr>
             </table>
+
+            {{ $loggedin := ne .ActiveUser "" }}
+            {{ $notdefault := ne .LinkBeingEdited.ID 0 }}
+            {{ if and $loggedin $notdefault }}
+            <h3>Recent Edits</h3>
+            <table class="table">
+              {{/* metadata */}}
+              <tr>
+              <thead>
+              <th>Time</th>
+              <th>Editor</th>
+              <th>Message</th>
+              </thead>
+
+              {{ range .GetLinkEdits .LinkBeingEdited.ID }}
+              <tr><td>{{ $.PrettyTime .EditDate }}</td><td>{{ .EditUser }}</td><td>{{ .EditMsg }}</td></tr>
+              {{ end }}
+            </table>
+            {{ end }}
+
           </form>
         </div>
       </div>

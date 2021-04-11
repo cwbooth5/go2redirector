@@ -47,6 +47,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 	if r.URL.RequestURI() == "/api/link/" {
 		var internal bool // Is this going to get a page returned(internal == true) or a JSON response?
 		var inboundLink *core.Link
+		now := time.Now()
 		switch r.Method {
 		case "POST":
 			r.ParseForm()
@@ -114,6 +115,10 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			// If they were decoupling the link, do it now and return
 			if r.PostFormValue("delete") == "true" {
 				core.LinkDataBase.Decouple(ll, inboundLink)
+				// link edit metadata
+				deleteEdit := core.EditRecord{EditDate: now, EditUser: core.ExtractUser(r), EditMsg: fmt.Sprintf("link decoupled: %s", inboundLink.URL)}
+				core.RedirectorMetadata.ListEdits[ll.Keyword] = core.PrependEdit(core.RedirectorMetadata.ListEdits[ll.Keyword], &deleteEdit)
+
 				if internal {
 					// The template called this, so 302 to the dotpage for this keyword.
 					http.Redirect(w, r, fmt.Sprintf("/.%s", outboundLink.Keyword), 302)
@@ -130,6 +135,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			fmt.Printf("outbound link tag: %s\n", outboundLink.Tag)
 			allTags := strings.Split(outboundLink.Tag, " ")
 			fmt.Printf("alltags: %v\n", allTags)
+			var newLinkEdit core.EditRecord
 
 			if id == 0 {
 				core.LogDebug.Printf("POST is adding a new link.")
@@ -140,13 +146,17 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 				outboundLink.ID = lid
 				core.LogInfo.Printf("New link with ID %d was added to the DB.\n", lid)
 				ll.TagBindings[lid] = allTags
+				newLinkEdit = core.EditRecord{EditDate: now, EditUser: core.ExtractUser(r), EditMsg: fmt.Sprintf("link created: %s", inboundLink.URL)}
 			} else {
 				ll.TagBindings[id] = allTags
+				newLinkEdit = core.EditRecord{EditDate: now, EditUser: core.ExtractUser(r), EditMsg: fmt.Sprintf("link modified: %s", inboundLink.URL)}
 			}
+			// link edit metadata
+			core.RedirectorMetadata.LinkEdits[outboundLink.ID] = core.PrependEdit(core.RedirectorMetadata.LinkEdits[outboundLink.ID], &newLinkEdit)
+
 			// existing links will be coupled further down
 
 			// timestamps
-			now := time.Now()
 			inboundLink.Ctime = now
 			inboundLink.Atime = now
 			inboundLink.Mtime = now
@@ -155,12 +165,16 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			var allMemberships = core.LinkDataBase.Links[inboundLink.ID].Lists
 			for _, kw := range strings.Fields(r.PostFormValue("otherlists")) {
 				kwd, _ := core.MakeNewKeyword(kw)
+				// link edit metadata
+				otherListEdit := core.EditRecord{EditDate: now, EditUser: core.ExtractUser(r), EditMsg: fmt.Sprintf("link coupled: %s, tags: %s", inboundLink.URL, allTags)}
 				if ll, exists := core.LinkDataBase.Lists[kwd]; exists {
 					core.LinkDataBase.Couple(ll, inboundLink)
+					core.RedirectorMetadata.ListEdits[ll.Keyword] = core.PrependEdit(core.RedirectorMetadata.ListEdits[ll.Keyword], &otherListEdit)
 				} else {
 					// The other list they were trying to add to doesn't exist. No problem. Create it.
 					newList := core.MakeNewList(kwd, inboundLink)
 					core.LinkDataBase.Couple(newList, inboundLink)
+					core.RedirectorMetadata.ListEdits[newList.Keyword] = core.PrependEdit(core.RedirectorMetadata.ListEdits[newList.Keyword], &otherListEdit)
 				}
 				allMemberships = append(allMemberships, kwd)
 				core.LogDebug.Printf("Coupling link to otherlist '%s'", kwd)
@@ -177,6 +191,10 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			inboundLink.LinkVariables = formVariableValues // They're all overwritten. Users can always change these defaults.
 
 			core.LinkDataBase.Couple(ll, inboundLink)
+
+			// link edit metadata
+			listEdit := core.EditRecord{EditDate: now, EditUser: core.ExtractUser(r), EditMsg: fmt.Sprintf("link coupled: %s, tags: %s", inboundLink.URL, allTags)}
+			core.RedirectorMetadata.ListEdits[ll.Keyword] = core.PrependEdit(core.RedirectorMetadata.ListEdits[kw], &listEdit)
 
 			if internal {
 				// The template called this, so 302 to the dotpage for this keyword.
@@ -216,12 +234,19 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
+			previousBehavior := core.LinkDataBase.Lists[kw].Behavior
 			core.LinkDataBase.Lists[kw].Behavior = requestedBehavior
 			core.LogDebug.Printf("Behavior on keyword '%s' changed to %d\n", kw, requestedBehavior)
 
+			if previousBehavior != requestedBehavior { // handle the case where they just clicked the button with no changes
+				// edit metadata on the list
+				editmsg := fmt.Sprintf("behavior changed from '%s' to '%s'", core.GetPrettyBehaviorString(previousBehavior), core.GetPrettyBehaviorString(requestedBehavior))
+				core.RedirectorMetadata.ListEdits[kw] = core.PrependEdit(core.RedirectorMetadata.ListEdits[kw], &core.EditRecord{EditDate: time.Now(), EditUser: core.ExtractUser(r), EditMsg: editmsg})
+			}
+
 			if internal {
 				// The template called this, so 302 to the dotpage for this keyword.
-				http.Redirect(w, r, fmt.Sprintf("/.%s", kw), 302)
+				http.Redirect(w, r, fmt.Sprintf("/.%s", kw), http.StatusFound)
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")

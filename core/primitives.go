@@ -457,7 +457,6 @@ func (d *LinkDatabase) Couple(ll *ListOfLinks, linkObj *Link) {
 	if !present { // do not add membership if it is already present
 		linkObj.Lists = append(linkObj.Lists, ll.Keyword)
 	}
-
 	ll.Links[linkObj.ID] = linkObj
 }
 
@@ -481,9 +480,8 @@ func (d *LinkDatabase) CommitNewLink(l *Link) (int, error) {
 	return id, err
 }
 
-/* Get a link object by ID or URL. */
+// Get a link object by ID or URL.
 func (d *LinkDatabase) GetLink(id int, url string) *Link {
-
 	for _, lnk := range d.Links {
 		if lnk.ID == id || lnk.URL == url {
 			return lnk
@@ -522,6 +520,22 @@ func (d *LinkDatabase) LinksByMtime(count int) []*Link {
 	return linkPile[:count]
 }
 
+func (d *LinkDatabase) LinksByClicks(count int) []*Link {
+	linkPile := []*Link{}
+	for _, link := range d.Links {
+		linkPile = append(linkPile, link)
+	}
+	sort.Sort(ByLinkClicks(linkPile))
+	// Check for the < count case
+	if len(linkPile) < count {
+		return linkPile
+	}
+	return linkPile[:count]
+}
+
+// TopLists returns a collection of lists of links, sorted by click count.
+// The desired length of the returned result is the input.
+// Use -1 to return all lists in the linkDB, sorted by click count.
 func (d *LinkDatabase) TopLists(count int) []*ListOfLinks {
 	listPile := []*ListOfLinks{}
 	for _, list := range d.Lists {
@@ -533,3 +547,5 @@ func (d *LinkDatabase) TopLists(count int) []*ListOfLinks {
 	}
 	return listPile[:count]
 }
+
+var RedirectorMetadata = MakeNewMetadata()

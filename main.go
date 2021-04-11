@@ -323,6 +323,7 @@ func configureWebserver(a string, p int) string {
 	fs := http.FileServer(http.Dir("./static"))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
 	http.HandleFunc("/_link_/", gohttp.RouteLink)
+	http.HandleFunc("/_login_", gohttp.RouteLogin)
 	http.HandleFunc("/api/", api.RouteAPI)
 	http.HandleFunc("/_db_", gohttp.RouteGetDB)
 	http.HandleFunc("/404.html", gohttp.RouteNotFound)
@@ -459,6 +460,14 @@ func main() {
 		if err != nil {
 			core.LogDebug.Println(err)
 			//core.LogDebug.Fatalf("Could not load link database from file %s\n", importPath)
+		}
+
+		// If the file is found on disk, init metadata with that file.
+		// Metadata is initialized empty before this, so an error is ingnored for now and we default to "empty metadata"
+		meta, metaerr := core.RedirectorMetadata.Import("go2metadata.json")
+		if metaerr == nil {
+			core.LogDebug.Println("Edit metadata found on disk and loaded: go2metadata.json")
+			core.RedirectorMetadata = &meta
 		}
 
 		// When we go active and we have a peer, we will start sending regular updates to
