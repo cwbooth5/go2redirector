@@ -345,10 +345,17 @@ func (ll *ListOfLinks) GetUsages(linkid int) []string {
 	var usages []string
 	l := ll.Links[linkid]
 
+	// first use case: tagbindings are completely empty
 	if len(ll.TagBindings) == 0 {
-		// temporary fix for nil map bug TODO
+		// temporary fix for lists which were already created with {} as the tagbindings for this linkid
 		LogError.Printf("NOTICE: Usages hack enabled for list '%s' and link %d\n", ll.Keyword, linkid)
-		return usages
+		ll.TagBindings[l.ID] = []string{""}
+	}
+
+	// second use case: tagbindings are not empty, but we don't have a map entry for this link ID.
+	if _, exists := ll.TagBindings[linkid]; !exists {
+		LogError.Printf("NOTICE: Usages hack enabled for list '%s' and link %d\n", ll.Keyword, linkid)
+		ll.TagBindings[l.ID] = []string{""}
 	}
 
 	if ll.TagBindings[linkid][0] != "" {
@@ -485,6 +492,12 @@ func (d *LinkDatabase) Couple(ll *ListOfLinks, linkObj *Link) {
 			present = true
 		}
 	}
+
+	// tag bindings - use case for "add an existing link to an existing otherlist"
+	if _, exists := ll.TagBindings[linkObj.ID]; !exists {
+		ll.TagBindings[linkObj.ID] = []string{""}
+	}
+
 	if !present { // do not add membership if it is already present
 		linkObj.Lists = append(linkObj.Lists, ll.Keyword)
 	}
