@@ -345,6 +345,12 @@ func (ll *ListOfLinks) GetUsages(linkid int) []string {
 	var usages []string
 	l := ll.Links[linkid]
 
+	if len(ll.TagBindings) == 0 {
+		// temporary fix for nil map bug TODO
+		LogError.Printf("NOTICE: Usages hack enabled for list '%s' and link %d\n", ll.Keyword, linkid)
+		return usages
+	}
+
 	if ll.TagBindings[linkid][0] != "" {
 		tags := ll.TagBindings[linkid]
 		for _, tag := range tags {
