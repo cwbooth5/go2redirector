@@ -261,12 +261,18 @@ window.addEventListener('load', function() {
       <div class="card-header"><h4>Redirect Variables</h4></div>
       <div class="card-body">
         <p>URLs can have a single positional <code>{variable}</code> within, which is the last field a user types in a redirect. The only supported value right now is <code>{1}</code>.</p>
-        {{ if $special }}
-        <p>
-        For example, this link uses the URL <code>{{ $thelink.URL }}</code>. The full redirect for this would be <code>{{ .RedirectorName }} {{ .Keyword }}/parameter</code>, where "parameter"
-        is any string which makes sense to subsititute into this URL.
-        </p>
+        <p>The possible redirects to this link: <br>
+        {{ $thislist := .GetMyList .Keyword }}
+        {{ if ne .LinkBeingEdited.ID 0 }}
+          {{ $usages := $thislist.GetUsages .LinkBeingEdited.ID }}
+          {{ range $usage := $usages }}
+          <code>{{ $usage }}</code><br>
+          {{ end }}
+          {{ if $special }}
+          <p>...where "parameter" is any string which makes sense to subsititute into this URL for <code>{1}</code>.</p>
+          {{ end }}
         {{ end }}
+        
         <div class="inner">
           <form action="/_variables_/" method="POST">
             <!-- This tells the server where to redirect after the form submission. -->

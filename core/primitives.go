@@ -335,8 +335,33 @@ func (ll *ListOfLinks) CheckTag(inputTag string) string {
 	if dupes[inputTag] == true {
 		return "Duplicate tag! This could lead to undefined list behavior."
 	} else {
-		return "" // no probems found
+		return "" // no problems found
 	}
+}
+
+// GetUsages is run in the templates to provide all possible usage strings
+// for a given link in this list.
+func (ll *ListOfLinks) GetUsages(linkid int) []string {
+	var usages []string
+	l := ll.Links[linkid]
+
+	if ll.TagBindings[linkid][0] != "" {
+		tags := ll.TagBindings[linkid]
+		for _, tag := range tags {
+			if !l.Special() { // go2 keyword/tag
+				usages = append(usages, fmt.Sprintf("%s %s/%s", RedirectorName, ll.Keyword, tag))
+			} else { //go2 keyword/tag/parameter
+				usages = append(usages, fmt.Sprintf("%s %s/%s/parameter", RedirectorName, ll.Keyword, tag))
+			}
+		}
+	} else {
+		if !l.Special() { // go2 keyword
+			usages = append(usages, fmt.Sprintf("%s %s", RedirectorName, ll.Keyword))
+		} else { // go2 keyword/parameter
+			usages = append(usages, fmt.Sprintf("%s %s/parameter", RedirectorName, ll.Keyword))
+		}
+	}
+	return usages
 }
 
 /*
