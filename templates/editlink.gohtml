@@ -146,14 +146,14 @@ window.addEventListener('load', function() {
               <td>URL</td>
               <td>
 
-                <textarea id="urlinput" name="url" rows="4" cols="50" placeholder="www.example.com" class="form-control" aria-describedby="urlHelpBlock" oninput="addinputs()" required>{{ if ne $linkid 0 }}{{ .LinkBeingEdited.URL }}{{ end }}</textarea>
+                <textarea id="urlinput" name="url" rows="4" cols="50" placeholder="www.example.com" class="form-control" aria-describedby="urlHelpBlock" required>{{ if ne $linkid 0 }}{{ .LinkBeingEdited.URL }}{{ end }}</textarea>
                 <small id="urlHelpBlock" class="form-text text-muted">
                   Add {1} into the URL here to substitute the first input parameter.
                 </small>
               </td>
             </tr>
 
-            <!-- dynamically-added client side form input fields for variables -->
+            {{ if false }}
             <tr id="urlvars">
               <td>Default Variables</td>
               <td>
@@ -170,6 +170,7 @@ window.addEventListener('load', function() {
 
               </td>
             </tr>
+            {{ end }}
 
 
             {{ if $isspecial }}
@@ -259,9 +260,13 @@ window.addEventListener('load', function() {
     <div class="card">
       <div class="card-header"><h4>Redirect Variables</h4></div>
       <div class="card-body">
-        <p>URLs can have <code>{variables}</code> within. Any URL with a variable configured has a default setting which can be overridden per-browser.
-          The default setting gets used when you don't have a local override in place.
+        <p>URLs can have a single positional <code>{variable}</code> within, which is the last field a user types in a redirect. The only supported value right now is <code>{1}</code>.</p>
+        {{ if $special }}
+        <p>
+        For example, this link uses the URL <code>{{ $thelink.URL }}</code>. The full redirect for this would be <code>{{ .RedirectorName }} {{ .Keyword }}/parameter</code>, where "parameter"
+        is any string which makes sense to subsititute into this URL.
         </p>
+        {{ end }}
         <div class="inner">
           <form action="/_variables_/" method="POST">
             <!-- This tells the server where to redirect after the form submission. -->
@@ -270,6 +275,8 @@ window.addEventListener('load', function() {
             <input type="hidden" name="linkid" value="{{ $linkid }}"/>
             {{ end }}
 
+            {{/* I want to keep this block of code around just in case we need to flip on overrides for some reason */}}
+            {{ if false }}
             <table class="table">
               <tr>
                 <td>
@@ -298,6 +305,7 @@ window.addEventListener('load', function() {
                 </td>
               </tr>
             </table>
+            {{ end }}
 
             {{ $loggedin := ne .ActiveUser "" }}
             {{ $notdefault := ne .LinkBeingEdited.ID 0 }}
