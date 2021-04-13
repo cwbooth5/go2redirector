@@ -180,7 +180,6 @@ func (m *ModelIndex) IdentifyBuild() string {
 
 // give keyword, get list of links
 func (m *ModelIndex) GetMyList(k core.Keyword) *core.ListOfLinks {
-	// kwd, _ := makeNewKeyword(k)
 	return core.LinkDataBase.Lists[k]
 }
 
@@ -193,10 +192,31 @@ func (m *ModelIndex) GetExternalRedirectorAddress() string {
 
 func (m *ModelIndex) GetListEdits(k core.Keyword) []*core.EditRecord {
 	return core.RedirectorMetadata.ListEdits[k]
-	// r := []string{"your", "mother", "trebek"}
-	// return r
 }
 
 func (m *ModelIndex) GetLinkEdits(id int) []*core.EditRecord {
 	return core.RedirectorMetadata.LinkEdits[id]
+}
+
+// GetSimilar locates similarly-named keywords from an existing list of links.
+func (m *ModelIndex) GetSimilar() []core.Keyword {
+	targets := []core.Keyword{}
+	s1 := string(m.Keyword)
+	allLists := m.LinkDB.Lists
+	// allLists := core.LinkDataBase.Lists
+	for _, val := range allLists {
+		s2 := string(val.Keyword)
+		if s1 == s2 {
+			continue
+		}
+		ratio := core.Similar(s1, s2)
+		if ratio < core.LevDistRatio && s1 != s2 {
+			// low ratio
+			targets = append(targets, val.Keyword)
+		} else if strings.Contains(s1, s2) || strings.Contains(s2, s1) {
+			// substring match
+			targets = append(targets, val.Keyword)
+		}
+	}
+	return targets
 }

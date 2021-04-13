@@ -118,7 +118,7 @@
       </div>
     </div>
     {{ $thislist := .GetMyList .Keyword }}
-    {{ $similar := $thislist.GetSimilar .Keyword }}
+    {{ $similar := .GetSimilar }}
     {{ $count := len $similar}}
     <div class="col-sm-6" style="margin-bottom: 10px;">
       <div class="card">

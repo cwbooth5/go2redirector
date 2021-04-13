@@ -111,8 +111,6 @@ func TestBehaviorChange(t *testing.T) {
 		core.PrintList(*aList)
 		t.Fail()
 	}
-
-	// test behavior change to specific link
 }
 
 func TestBasicAddRemove(t *testing.T) {
@@ -221,60 +219,6 @@ path len == 3
 setup: keyword with a single link, link has substitution
 test: HTTP GET from user with "keyword/tag/param", asserting valid URL returned with param
 */
-
-// func TestGetSimilar(t *testing.T) {
-// 	db := core.MakeNewLinkDatabase()
-// 	aLink, _ := core.MakeNewlink("www.example.com/TestGetSimilar", "probably TestGetSimilar")
-// 	db.CommitNewLink(aLink)
-// 	akw, _ := core.MakeNewKeyword("site")
-// 	aList := core.MakeNewList(akw, aLink)
-// 	db.Couple(aList, aLink)
-
-// 	firstSim := aList.GetSimilar(akw)
-// 	if len(firstSim) != 0 {
-// 		t.Log("there shouldn't be any similar links since this is the only link")
-// 		t.Fail()
-// 	}
-
-// 	// make another similar keyword with an edit distance of 1. This should be tagged as similar.
-// 	bkw, _ := core.MakeNewKeyword("sites")
-// 	bList := core.MakeNewList(bkw, aLink)
-// 	db.Couple(bList, aLink)
-// 	secondSim := bList.GetSimilar(bkw)
-// 	if len(secondSim) != 1 {
-// 		t.Logf("expected 1 similar link, got: %d", len(secondSim))
-// 		for i, v := range secondSim {
-// 			fmt.Printf("num: %d, value: %s\n", i, v)
-// 		}
-// 		t.Fail()
-// 	}
-// 	fmt.Println(db)
-// }
-
-// This is the function for determining edit distance between two terms.
-// func TestLevDistance(t *testing.T) {
-// 	a := core.calcLevDist("", "term")
-// 	if a != 4 {
-// 		t.Fail()
-// 	}
-// 	b := calcLevDist("term", "")
-// 	if b != 4 {
-// 		t.Fail()
-// 	}
-// 	c := calcLevDist("term", "term")
-// 	if c != 0 {
-// 		t.Fail()
-// 	}
-// 	d := calcLevDist("missiles", "missile")
-// 	if d != 1 {
-// 		t.Fail()
-// 	}
-// 	e := calcLevDist("something", "anotherthing")
-// 	if e != 5 {
-// 		t.Fail()
-// 	}
-
-// }
 
 /*
 

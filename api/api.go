@@ -99,6 +99,11 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 				inboundLink.Dtime = exptime
 				core.LogDebug.Printf("inbound link Dtime %s\n", inboundLink.Dtime)
 			} else {
+				// Check to see if we even have a link at this ID.
+				if _, exists := core.LinkDataBase.Links[id]; !exists {
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
 				inboundLink = core.LinkDataBase.Links[id]
 				inboundLink.Title = outboundLink.Title
 				inboundLink.URL = outboundLink.Url

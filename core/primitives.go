@@ -296,28 +296,6 @@ func (ll *ListOfLinks) ClickSort() []*Link {
 	return sorted
 }
 
-// GetSimilar locates similarly-named keywords from an existing list of links.
-func (ll *ListOfLinks) GetSimilar(kwd Keyword) []Keyword {
-	targets := []Keyword{}
-	s1 := string(kwd)
-	allLists := LinkDataBase.Lists // TODO: rmutex
-	for _, val := range allLists {
-		s2 := string(val.Keyword)
-		if s1 == s2 {
-			continue
-		}
-		ratio := Similar(s1, s2)
-		if ratio < LevDistRatio && s1 != s2 {
-			// low ratio
-			targets = append(targets, val.Keyword)
-		} else if strings.Contains(s1, s2) || strings.Contains(s2, s1) {
-			// substring match
-			targets = append(targets, val.Keyword)
-		}
-	}
-	return targets
-}
-
 // Check a tag on a list of links and return a string describing any problems (if any).
 // Currently, the only problem users can create is a duplicate tag in a list.
 func (ll *ListOfLinks) CheckTag(inputTag string) string {
