@@ -174,24 +174,13 @@ func MakeNewlink(incomingURL string, title string) (*Link, error) {
 }
 
 // Combine a keyword and a link pointer to generate a new listofLinks
-func MakeNewList(keyword Keyword, linkobj *Link) *ListOfLinks {
-	var behavior int
-	switch NewListBehavior {
-	case "RedirectToFreshest":
-		behavior = RedirectToFreshest
-	case "RedirectToTop":
-		behavior = RedirectToTop
-	case "RedirectToRandom":
-		behavior = RedirectToRandom
-	case "RedirectToList":
-		behavior = RedirectToList
-	default:
-		behavior = RedirectToFreshest
-	}
+// func MakeNewList(keyword Keyword, linkobj *Link) *ListOfLinks {
+func MakeNewList(keyword Keyword) *ListOfLinks {
+	defaultBehavior := RedirectToFreshest
 	return &ListOfLinks{
 		Keyword:     keyword,
 		Links:       make(map[int]*Link),
-		Behavior:    behavior,
+		Behavior:    defaultBehavior,
 		Usage:       "",
 		Logging:     LinkLogNewKeywords,
 		TagBindings: make(map[int][]string),
@@ -224,6 +213,11 @@ func (ll *ListOfLinks) GetRedirectURL() string {
 		list == list page for the keyword
 		default == direct to a specific link, based on current LinkID set (Behavior > 0)
 	*/
+
+	// nil case - there's nothing in this list yet
+	if len(ll.Links) == 0 {
+		return ""
+	}
 
 	// copy of the array of links used for iteration in the below cases
 	temp := []*Link{}

@@ -13,7 +13,7 @@ func TestGetSimilar(t *testing.T) {
 	aLink, _ := core.MakeNewlink("www.example.com/TestGetSimilar", "probably TestGetSimilar")
 	db.CommitNewLink(aLink)
 	akw, _ := core.MakeNewKeyword("site")
-	aList := core.MakeNewList(akw, aLink)
+	aList := core.MakeNewList(akw)
 	db.Couple(aList, aLink)
 
 	// create a model
@@ -29,7 +29,7 @@ func TestGetSimilar(t *testing.T) {
 	bLink, _ := core.MakeNewlink("www.example.com/TestGetSimilar/2.php", "moar TestGetSimilar")
 	db.CommitNewLink(aLink)
 	bkw, _ := core.MakeNewKeyword("sites")
-	bList := core.MakeNewList(bkw, aLink)
+	bList := core.MakeNewList(bkw)
 	db.Couple(bList, bLink)
 	secondSim := model.GetSimilar()
 	fmt.Printf("edit data: %s", secondSim)

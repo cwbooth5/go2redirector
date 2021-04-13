@@ -40,7 +40,7 @@ func TestRemoveEmptyKeyword(t *testing.T) {
 	}
 	// db.CommitNewLink(aLink)
 	akw, _ := core.MakeNewKeyword("sites")
-	aList := core.MakeNewList(akw, aLink)
+	aList := core.MakeNewList(akw)
 	// newList := db.CommitNewList(akw, aList)
 	db.Couple(aList, aLink)
 	if len(aList.Links) != 1 {
@@ -76,7 +76,7 @@ func TestAddMultipleLinksToList(t *testing.T) {
 	db.CommitNewLink(bLink)
 	db.CommitNewLink(cLink)
 	akw, _ := core.MakeNewKeyword("otters")
-	aList := core.MakeNewList(akw, aLink)
+	aList := core.MakeNewList(akw)
 	if len(aList.Links) != 0 {
 		t.Fail()
 	}
@@ -103,7 +103,7 @@ func TestBehaviorChange(t *testing.T) {
 	aLink, _ := core.MakeNewlink("www.reddit.com", "probably reddit")
 	db.CommitNewLink(aLink)
 	akw, _ := core.MakeNewKeyword("otters")
-	aList := core.MakeNewList(akw, aLink)
+	aList := core.MakeNewList(akw)
 	db.Couple(aList, aLink)
 	aList.Behavior = core.RedirectToRandom
 
@@ -133,7 +133,7 @@ func TestBasicAddRemove(t *testing.T) {
 	// create a new keyword
 	aKw, _ := core.MakeNewKeyword("missiles")
 	// create a new list of links and add that link to the above keyword
-	aList := core.MakeNewList(aKw, aLink)
+	aList := core.MakeNewList(aKw)
 	db.Couple(aList, aLink)
 
 	if aList.Clicks != 0 || aList.Behavior != -2 || len(aList.Links) != 1 {
@@ -173,7 +173,7 @@ func TestAddToOtherList(t *testing.T) {
 	// create a new list and add the above link.
 	// link isn't important, just has to be there to make the list whole
 	aKw, _ := core.MakeNewKeyword("missiles")
-	aList := core.MakeNewList(aKw, aLink)
+	aList := core.MakeNewList(aKw)
 	db.Couple(aList, aLink)
 	if len(db.Lists[aKw].TagBindings) == 0 {
 		t.Logf("Tagbindings were len == 0 on new list: %s", aKw)
@@ -184,7 +184,7 @@ func TestAddToOtherList(t *testing.T) {
 	db.CommitNewLink(bLink)
 	// create a second list and add a new link to it.
 	bKw, _ := core.MakeNewKeyword("tanks")
-	bList := core.MakeNewList(bKw, bLink)
+	bList := core.MakeNewList(bKw)
 	db.Couple(bList, bLink)
 
 	// Coupling link A with list B should result in a tagbinding on list B

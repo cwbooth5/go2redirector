@@ -26,7 +26,7 @@ func MakeStuff() {
 	lnk, _ := core.MakeNewlink("www.reddit.com", "reddit")
 	core.LinkDataBase.CommitNewLink(lnk)
 
-	ll := core.MakeNewList(core.Keyword("r"), lnk)
+	ll := core.MakeNewList(core.Keyword("r"))
 	core.LinkDataBase.Couple(ll, lnk)
 	ll.TagBindings[lnk.ID] = []string{"pics"}
 
@@ -38,7 +38,7 @@ func MakeStuff() {
 	// wikipedia test of tagging
 	lnk, _ = core.MakeNewlink("https://en.wikipedia.org/wiki/{subject}", "english wikipedia")
 	core.LinkDataBase.CommitNewLink(lnk)
-	ll = core.MakeNewList(core.Keyword("wiki"), lnk)
+	ll = core.MakeNewList(core.Keyword("wiki"))
 	core.LinkDataBase.Couple(ll, lnk)
 	ll.TagBindings[lnk.ID] = []string{"en"}
 

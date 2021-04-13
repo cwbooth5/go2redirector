@@ -113,7 +113,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			ll, exists := core.LinkDataBase.Lists[outboundLink.Keyword]
 			if !exists {
 				// We need to create the keyword and link.
-				ll = core.MakeNewList(outboundLink.Keyword, inboundLink)
+				ll = core.MakeNewList(outboundLink.Keyword)
 				core.LogInfo.Printf("New keyword created: '%s'\n", outboundLink.Keyword)
 			}
 
@@ -177,7 +177,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 					core.RedirectorMetadata.ListEdits[ll.Keyword] = core.PrependEdit(core.RedirectorMetadata.ListEdits[ll.Keyword], &otherListEdit)
 				} else {
 					// The other list they were trying to add to doesn't exist. No problem. Create it.
-					newList := core.MakeNewList(kwd, inboundLink)
+					newList := core.MakeNewList(kwd)
 					core.LinkDataBase.Couple(newList, inboundLink)
 					core.RedirectorMetadata.ListEdits[newList.Keyword] = core.PrependEdit(core.RedirectorMetadata.ListEdits[newList.Keyword], &otherListEdit)
 				}
