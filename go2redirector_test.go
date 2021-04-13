@@ -158,6 +158,46 @@ func TestBasicAddRemove(t *testing.T) {
 	}
 }
 
+func TestAddToOtherList(t *testing.T) {
+	/*
+		When a user couples a link with one of the 'otherlists', there are two possibilities.
+		1. They are coupling with a list that already exists.
+		2. They are coupling with a list which does not exist yet.
+
+		The coupling should result in a new tagbinding map entry for the added link.
+	*/
+	db := core.MakeNewLinkDatabase()
+
+	// create a link with no list yet
+	aLink, _ := core.MakeNewlink("www.example.com", "a title")
+	db.CommitNewLink(aLink)
+
+	// create a new list and add the above link.
+	// link isn't important, just has to be there to make the list whole
+	aKw, _ := core.MakeNewKeyword("missiles")
+	aList := core.MakeNewList(aKw, aLink)
+	db.Couple(aList, aLink)
+	if len(db.Lists[aKw].TagBindings) == 0 {
+		t.Logf("Tagbindings were len == 0 on new list: %s", aKw)
+		t.FailNow()
+	}
+
+	bLink, _ := core.MakeNewlink("www.example.com/foo", "another title")
+	db.CommitNewLink(bLink)
+	// create a second list and add a new link to it.
+	bKw, _ := core.MakeNewKeyword("tanks")
+	bList := core.MakeNewList(bKw, bLink)
+	db.Couple(bList, bLink)
+
+	// Coupling link A with list B should result in a tagbinding on list B
+	db.Couple(bList, aLink)
+	if _, exists := bList.TagBindings[aLink.ID]; !exists {
+		t.Logf("tag binding was not present in otherlist: %s", bList.Keyword)
+		t.FailNow()
+	}
+
+}
+
 /*
 path len == 1
 setup: keyword untagged with URL with no subs
