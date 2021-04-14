@@ -21,44 +21,6 @@ import (
 	"github.com/oxtoacart/bpool"
 )
 
-// This is essentially a unit test.
-func MakeStuff() {
-	lnk, _ := core.MakeNewlink("www.reddit.com", "reddit")
-	core.LinkDataBase.CommitNewLink(lnk)
-
-	ll := core.MakeNewList(core.Keyword("r"))
-	core.LinkDataBase.Couple(ll, lnk)
-	ll.TagBindings[lnk.ID] = []string{"pics"}
-
-	lnk, _ = core.MakeNewlink("www.127.0.0.1/foo", "local")
-	core.LinkDataBase.CommitNewLink(lnk)
-	core.LinkDataBase.Couple(ll, lnk)
-	ll.TagBindings[lnk.ID] = []string{"l"}
-
-	// wikipedia test of tagging
-	lnk, _ = core.MakeNewlink("https://en.wikipedia.org/wiki/{subject}", "english wikipedia")
-	core.LinkDataBase.CommitNewLink(lnk)
-	ll = core.MakeNewList(core.Keyword("wiki"))
-	core.LinkDataBase.Couple(ll, lnk)
-	ll.TagBindings[lnk.ID] = []string{"en"}
-
-	lnk, _ = core.MakeNewlink("https://it.wikipedia.org", "italian wikipedia")
-	core.LinkDataBase.CommitNewLink(lnk)
-	core.LinkDataBase.Couple(ll, lnk)
-	ll.TagBindings[lnk.ID] = []string{"it"}
-
-	lnk, _ = core.MakeNewlink("https://es.wikipedia.org", "spanish wikipedia")
-	core.LinkDataBase.CommitNewLink(lnk)
-	core.LinkDataBase.Couple(ll, lnk)
-	ll.TagBindings[lnk.ID] = []string{"es"}
-
-	lnk, _ = core.MakeNewlink("https://de.wikipedia.org", "german wikipedia")
-	core.LinkDataBase.CommitNewLink(lnk)
-	core.LinkDataBase.Couple(ll, lnk)
-	ll.TagBindings[lnk.ID] = []string{"de"}
-
-}
-
 // If a page needs to be rendered, that is returned along with a model.
 // If a redirect can be performed, it is done straight from this function.
 func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.ModelIndex, bool, error) {
@@ -85,6 +47,7 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 			msg := fmt.Sprintf("Your keyword of '%s' was not valid. %s'", html.EscapeString(inputKeyword), err.Error())
 			tmpl = "404.gohtml"
 			model.ErrorMessage = msg
+			w.WriteHeader(http.StatusBadRequest)
 			return tmpl, model, redirect, err
 		}
 		if len(inputSplit) > 1 {

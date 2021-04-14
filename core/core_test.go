@@ -64,6 +64,115 @@ func TestGpath(t *testing.T) {
 	}
 }
 
+func TestDecouple(t *testing.T) {
+	l, err := MakeNewlink("localhost", "a title")
+	if err != nil {
+		t.Fail()
+	}
+	k, err := MakeNewKeyword("decoupleme")
+	if err != nil {
+		t.Fail()
+	}
+	ll := MakeNewList(k)
+	LinkDataBase.Couple(ll, l)
+	if _, exists := LinkDataBase.Lists[k]; !exists {
+		t.Fail()
+	}
+	LinkDataBase.Decouple(ll, l)
+	// list has no more links, should be destroyed
+	if _, exists := LinkDataBase.Lists[k]; exists {
+		t.Fail()
+	}
+	// link has no more memberships, should be destroyed
+	if _, exists := LinkDataBase.Links[l.ID]; exists {
+		t.Fail()
+	}
+}
+
+func TestGetLink(t *testing.T) {
+	l, err := MakeNewlink("localhost/getlink", "whatever")
+	if err != nil {
+		t.Fail()
+	}
+	newLinkID, err := LinkDataBase.CommitNewLink(l)
+	if err != nil {
+		t.Fail()
+	}
+
+	// look for an ID we definitely don't have in the database
+	result1 := LinkDataBase.GetLink(8923982, "")
+	if result1.ID != 0 {
+		t.Fail()
+	}
+	// -1 is used when we are searching by URL only
+	result2 := LinkDataBase.GetLink(-1, "http://localhost/getlink")
+	if result2.ID != newLinkID {
+		t.Fail()
+	}
+	// This should result in getting the real link we have in the DB
+	result3 := LinkDataBase.GetLink(newLinkID, "")
+	if result3.ID != newLinkID {
+		t.Fail()
+	}
+}
+
+func TestTagFunctions(t *testing.T) {
+	l, err := MakeNewlink("localhost", "a title")
+	if err != nil {
+		t.Fail()
+	}
+	newLinkID, err := LinkDataBase.CommitNewLink(l)
+	if err != nil {
+		t.Fail()
+	}
+	k, err := MakeNewKeyword("yayfortags")
+	if err != nil {
+		t.Fail()
+	}
+	ll := MakeNewList(k)
+	LinkDataBase.Couple(ll, l)
+
+	result1 := ll.GetTag(99998)
+	if len(result1) != 0 {
+		t.Fail()
+	}
+	ll.TagBindings[newLinkID] = []string{"newtag"}
+	result2 := ll.TagBindings[newLinkID]
+	if result2[0] != "newtag" {
+		t.Fail()
+	}
+	ll.TagBindings[newLinkID] = []string{"newtag", "tag2"}
+	result3 := ll.GetTagString(newLinkID, "|")
+	if result3 != "newtag|tag2" {
+		t.Fail()
+	}
+}
+
+// func TestGetUsages(t *testing.T) {
+// 	l, err := MakeNewlink("localhost", "a title")
+// 	if err != nil {
+// 		t.Fail()
+// 	}
+// 	newLinkID, err := LinkDataBase.CommitNewLink(l)
+// 	if err != nil {
+// 		t.Fail()
+// 	}
+// 	k, err := MakeNewKeyword("usagestuff")
+// 	if err != nil {
+// 		t.Fail()
+// 	}
+// 	ll := MakeNewList(k)
+// 	LinkDataBase.Couple(ll, l)
+
+// ll.TagBindings[newLinkID] = []string{"newtag"}
+
+// result1 := ll.GetUsages(newLinkID)
+// if result1[0] != "usagestuff/newtag" {
+// 	t.Fail()
+// }
+// fmt.Println(result1)
+// }
+
 // This is the function for determining edit distance between two terms.
 func TestLevDistance(t *testing.T) {
 	a := calcLevDist("", "term")
