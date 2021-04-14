@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"strings"
 	"testing"
@@ -220,6 +221,104 @@ func TestMakeNewLink(t *testing.T) {
 	}
 }
 
+func TestCommitNewLink(t *testing.T) {
+	l, _ := MakeNewlink("localhost", "this is a title")
+	if l.ID != 0 {
+		t.Fail()
+	}
+	l.ID = 56
+	id, _ := LinkDataBase.CommitNewLink(l)
+	if id != 56 {
+		t.Fail()
+	}
+}
+
+func TestSortingInterfaces(t *testing.T) {
+	numLinks := 20
+	db := MakeNewLinkDatabase()
+	for i := 0; i < numLinks; i++ {
+		l, _ := MakeNewlink(fmt.Sprintf("example.com/%d", i), fmt.Sprintf("title %d", i))
+		db.CommitNewLink(l)
+	}
+
+	result1 := db.LinksByAtime(10)
+	if result1[0].ID != numLinks {
+		t.Fail()
+	}
+
+	result2 := db.LinksByAtime(2)
+	if result2[0].ID != numLinks {
+		t.Fail()
+	}
+	if len(result2) != 2 {
+		t.Fail()
+	}
+
+	result3 := db.LinksByMtime(10)
+	if result3[0].ID != numLinks {
+		t.Fail()
+	}
+
+	if len(result3) != 10 {
+		t.Fail()
+	}
+
+	// assign a bunch of click counts to the links
+	for i, link := range db.Links {
+		f := float64(i)
+		link.Clicks = int(math.Floor(math.Pow(2, f)))
+	}
+
+	// pull the top ten by clicks
+	result4 := db.LinksByClicks(10)
+
+	if result4[0].Clicks != 1048576 {
+		t.Fail()
+	}
+
+	// lists can have click counts too
+	for i := 0; i < 20; i++ {
+		l, _ := MakeNewlink(fmt.Sprintf("example.com/%d", i), fmt.Sprintf("title %d", i))
+		db.CommitNewLink(l)
+		k, _ := MakeNewKeyword(fmt.Sprintf("mykeyword%d", i))
+		ll := MakeNewList(k)
+		f := float64(i)
+		ll.Clicks = int(math.Floor(math.Pow(2, f)))
+		db.Couple(ll, l)
+	}
+
+	result5 := db.TopLists(10)
+	if result5[0].Clicks != 524288 {
+		t.Fail()
+	}
+}
+
+func TestModifyLogging(t *testing.T) {
+	k, _ := MakeNewKeyword("duh")
+	ll := MakeNewList(k)
+
+	if ll.Logging != LinkLogNewKeywords {
+		t.Fail()
+	}
+
+	// turn off logging
+	ll.ModifyLogging(false)
+	if ll.Logging == true {
+		t.Fail()
+	}
+	if len(LinkLog[ll.Keyword]) != 0 {
+		t.Fail()
+	}
+
+	ll.ModifyLogging(true)
+	if ll.Logging == false {
+		t.Fail()
+	}
+	if len(LinkLog[ll.Keyword]) != 0 {
+		t.Fail()
+	}
+}
+
 func TestAKA(t *testing.T) {
 	l1, _ := MakeNewlink("example.com", "this is a title")
 	l2, _ := MakeNewlink("example.com", "this is a title as well")
@@ -293,6 +392,30 @@ func TestGetRedirectURL(t *testing.T) {
 
 	// It'd be weird if these were all equal.
 	if urls[5] == urls[25] && urls[1] == urls[19] && urls[12] == urls[20] {
+		t.Fail()
+	}
+
+	// case for 'direct to a link in the list'
+	l, _ := MakeNewlink("localhost/hellothere", "weeee")
+	linkID, _ := LinkDataBase.CommitNewLink(l)
+	LinkDataBase.Couple(ll, l)
+	ll.Behavior = linkID
+	directURL := ll.GetRedirectURL()
+
+	if directURL != "http://localhost/hellothere" {
+		t.Fail()
+	}
+
+	// 'top' list behavior
+	for i, link := range ll.Links {
+		f := float64(i)
+		link.Clicks = int(math.Floor(math.Pow(2, f)))
+	}
+
+	ll.Behavior = RedirectToTop
+	topURL := ll.GetRedirectURL()
+	fmt.Println(topURL)
+	if topURL != "http://localhost/hellothere" {
 		t.Fail()
 	}
 }
