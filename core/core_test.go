@@ -149,30 +149,33 @@ func TestTagFunctions(t *testing.T) {
 	}
 }
 
-// func TestGetUsages(t *testing.T) {
-// 	l, err := MakeNewlink("localhost", "a title")
-// 	if err != nil {
-// 		t.Fail()
-// 	}
-// 	newLinkID, err := LinkDataBase.CommitNewLink(l)
-// 	if err != nil {
-// 		t.Fail()
-// 	}
-// 	k, err := MakeNewKeyword("usagestuff")
-// 	if err != nil {
-// 		t.Fail()
-// 	}
-// 	ll := MakeNewList(k)
-// 	LinkDataBase.Couple(ll, l)
+func TestGetUsages(t *testing.T) {
+	RedirectorName = "go2" // Set this artificially, no config here
+	k, _ := MakeNewKeyword("usagestuff")
+	ll := MakeNewList(k)
+	l1, _ := MakeNewlink("localhost/kt", "keyword and a tag")
+	l2, _ := MakeNewlink("localhost/ktp-{1}.php", "keyword, tag, and parameter")
+	keywordTag, _ := LinkDataBase.CommitNewLink(l1)
+	keywordTagParameter, _ := LinkDataBase.CommitNewLink(l2)
 
-// ll.TagBindings[newLinkID] = []string{"newtag"}
+	LinkDataBase.Couple(ll, l1)
+	LinkDataBase.Couple(ll, l2)
 
-// result1 := ll.GetUsages(newLinkID)
-// if result1[0] != "usagestuff/newtag" {
-// 	t.Fail()
-// }
-// fmt.Println(result1)
-// }
+	ll.TagBindings[keywordTag] = []string{"kt"}
+	ll.TagBindings[keywordTagParameter] = []string{"ktp"}
+
+	// test cases
+	result1 := ll.GetUsages(keywordTag)
+	if result1[0] != "go2 usagestuff/kt" {
+		fmt.Println(result1)
+		t.Fail()
+	}
+	result2 := ll.GetUsages(keywordTagParameter)
+	if result2[0] != "go2 usagestuff/ktp/parameter" {
+		fmt.Println(result2)
+		t.Fail()
+	}
+}
 
 // This is the function for determining edit distance between two terms.
 func TestLevDistance(t *testing.T) {
@@ -202,6 +205,11 @@ func TestMakeNewKeyword(t *testing.T) {
 	k, err := MakeNewKeyword("<script>")
 	if err == nil {
 		t.Errorf("This was a bad keyword and it did not indicate an error: %s", k)
+	}
+	// url.QueryUnescape should indicate an error and pass it up
+	k, err = MakeNewKeyword("invalid%escape")
+	if err == nil {
+		t.Errorf("This was a bad keyword (cannot escape) and it did not indicate an error: %s", k)
 	}
 
 }
@@ -246,6 +254,11 @@ func TestSortingInterfaces(t *testing.T) {
 		t.Fail()
 	}
 
+	result1_1 := db.LinksByAtime(999) // test asking for count > found links
+	if len(result1_1) != numLinks {
+		t.Fail()
+	}
+
 	result2 := db.LinksByAtime(2)
 	if result2[0].ID != numLinks {
 		t.Fail()
@@ -262,6 +275,10 @@ func TestSortingInterfaces(t *testing.T) {
 	if len(result3) != 10 {
 		t.Fail()
 	}
+	result3_1 := db.LinksByMtime(999)
+	if len(result3_1) != numLinks {
+		t.Fail()
+	}
 
 	// assign a bunch of click counts to the links
 	for i, link := range db.Links {
@@ -273,6 +290,11 @@ func TestSortingInterfaces(t *testing.T) {
 	result4 := db.LinksByClicks(10)
 
 	if result4[0].Clicks != 1048576 {
+		t.Fail()
+	}
+
+	result4_1 := db.LinksByClicks(999)
+	if len(result4_1) != numLinks {
 		t.Fail()
 	}
 
@@ -289,6 +311,11 @@ func TestSortingInterfaces(t *testing.T) {
 
 	result5 := db.TopLists(10)
 	if result5[0].Clicks != 524288 {
+		t.Fail()
+	}
+
+	result5_1 := db.TopLists(-1)
+	if len(result5_1) != len(db.Lists) {
 		t.Fail()
 	}
 }
@@ -416,6 +443,33 @@ func TestGetRedirectURL(t *testing.T) {
 	topURL := ll.GetRedirectURL()
 	fmt.Println(topURL)
 	if topURL != "http://localhost/hellothere" {
+		t.Fail()
+	}
+}
+
+func TestCheckTag(t *testing.T) {
+	k, _ := MakeNewKeyword("tagcheck")
+	ll := MakeNewList(k)
+
+	// Add two links to the list using distinct tags
+	l1, _ := MakeNewlink("localhost/tagcheck", "about that hovercraft...")
+	linkID1, _ := LinkDataBase.CommitNewLink(l1)
+	LinkDataBase.Couple(ll, l1)
+	ll.TagBindings[linkID1] = []string{"tag1", "tag2"}
+	l2, _ := MakeNewlink("localhost/tagchecker", "oh my eels!")
+	linkID2, _ := LinkDataBase.CommitNewLink(l2)
+	LinkDataBase.Couple(ll, l2)
+	ll.TagBindings[linkID2] = []string{"tag1"} // note we have a dupe now
+
+	// Verify no problems found, tag is unique
+	result1 := ll.CheckTag("newtag")
+	if result1 != "" {
+		t.Fail()
+	}
+
+	// Verify existing tag indicates a duplicate was found
+	result2 := ll.CheckTag("tag1")
+	if result2 == "" { // returned string isn't important to test
 		t.Fail()
 	}
 }
