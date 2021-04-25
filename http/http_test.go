@@ -56,7 +56,7 @@ func TestGetExternalRedirectorAddress(t *testing.T) {
 
 func TestRouteLogin(t *testing.T) {
 	w := httptest.NewRecorder()
-	r, _ := http.NewRequest("GET", "/", nil)
+	r, _ := http.NewRequest("POST", "/", nil)
 	cookie := http.Cookie{
 		Name:    "redirectorlogin",
 		Value:   "trogdor",

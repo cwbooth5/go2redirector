@@ -364,6 +364,8 @@ func MakeNewLinkDatabase() *LinkDatabase {
 	}
 }
 
+// Import will read data from the provided io.Reader into memory at the global
+// LinkDataBase variable.
 func (d *LinkDatabase) Import(fh io.Reader) error {
 	var tempdb LinkDatabase
 	var err error
@@ -379,7 +381,8 @@ func (d *LinkDatabase) Import(fh io.Reader) error {
 	return err
 }
 
-// export the entire DB into a JSON file on disk.
+// Export will marshal the current LinkDataBase into JSON and write it to the provided
+// io.Writer.
 func (d *LinkDatabase) Export(fh io.Writer) error {
 	file, err := json.Marshal(*d)
 	if err != nil {

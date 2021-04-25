@@ -1,6 +1,8 @@
 package core
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"math"
 	"os"
@@ -470,6 +472,44 @@ func TestCheckTag(t *testing.T) {
 	// Verify existing tag indicates a duplicate was found
 	result2 := ll.CheckTag("tag1")
 	if result2 == "" { // returned string isn't important to test
+		t.Fail()
+	}
+}
+
+func TestImport(t *testing.T) {
+	dbString := strings.NewReader(`{"Lists":{"wiki":{"Keyword":"wiki","Links":{"4":{"ID":4,"URL":"https://en.wikipedia.org/wiki/{1}","Title":"english wikipedia","Lists":["wiki"],"Ctime":"2021-03-02T21:29:53.190845282Z","Mtime":"2021-03-02T21:29:53.190846649Z","Atime":"2021-03-02T21:29:53.190845282Z","Dtime":"2081-07-17T07:12:00Z","LinkVariables":{"1":"burrito"},"Clicks":0},"5":{"ID":5,"URL":"https://it.wikipedia.org","Title":"italian wikipedia","Lists":["wiki"],"Ctime":"2021-04-02T19:25:13.0299362-07:00","Mtime":"2021-04-03T02:25:13.0299745Z","Atime":"2021-04-02T19:25:13.0299362-07:00","Dtime":"2081-07-17T07:12:00Z","LinkVariables":{},"Clicks":0},"6":{"ID":6,"URL":"https://es.wikipedia.org","Title":"spanish wikipedia","Lists":["wiki"],"Ctime":"2021-03-02T21:28:42.998908802Z","Mtime":"2021-03-02T21:28:42.998915106Z","Atime":"2021-03-02T21:28:42.998908802Z","Dtime":"2081-07-17T07:12:00Z","LinkVariables":null,"Clicks":0},"7":{"ID":7,"URL":"https://de.wikipedia.org","Title":"german wikipedia","Lists":["wiki"],"Ctime":"2021-04-02T19:25:23.7522075-07:00","Mtime":"2021-04-03T02:25:23.752248Z","Atime":"2021-04-02T19:25:23.7522075-07:00","Dtime":"2081-07-17T07:12:00Z","LinkVariables":{},"Clicks":0}},"Behavior":-2,"Clicks":7,"Usage":"","Logging":true,"TagBindings":{"4":["en"],"5":["it","italian"],"6":["es"],"7":["de","german"]}}},"Links":{"0":{"ID":1,"URL":"http://127.0.0.1","Title":"This is a default.","Lists":[""],"Ctime":"2021-02-22T07:41:36.914130327Z","Mtime":"2021-02-22T07:41:36.914130327Z","Atime":"2021-02-22T07:41:36.914130327Z","Dtime":"2081-07-17T07:12:00Z","LinkVariables":null,"Clicks":0},"1":{"ID":1,"URL":"http://127.0.0.1","Title":"This is a default.","Lists":[""],"Ctime":"2021-02-22T07:41:36.914130327Z","Mtime":"2021-02-22T07:41:36.914130327Z","Atime":"2021-02-22T07:41:36.914130327Z","Dtime":"2081-07-17T07:12:00Z","LinkVariables":null,"Clicks":0},"4":{"ID":4,"URL":"https://en.wikipedia.org/wiki/{1}","Title":"english wikipedia","Lists":["wiki"],"Ctime":"2021-03-02T21:29:53.190845282Z","Mtime":"2021-03-02T21:29:53.190846649Z","Atime":"2021-03-02T21:29:53.190845282Z","Dtime":"2081-07-17T07:12:00Z","LinkVariables":{"1":"burrito"},"Clicks":0},"5":{"ID":5,"URL":"https://it.wikipedia.org","Title":"italian wikipedia","Lists":["wiki"],"Ctime":"2021-04-02T19:25:13.0299362-07:00","Mtime":"2021-04-03T02:25:13.0299745Z","Atime":"2021-04-02T19:25:13.0299362-07:00","Dtime":"2081-07-17T07:12:00Z","LinkVariables":{},"Clicks":0},"6":{"ID":6,"URL":"https://es.wikipedia.org","Title":"spanish wikipedia","Lists":["wiki"],"Ctime":"2021-03-02T21:28:42.998908802Z","Mtime":"2021-03-02T21:28:42.998915106Z","Atime":"2021-03-02T21:28:42.998908802Z","Dtime":"2081-07-17T07:12:00Z","LinkVariables":null,"Clicks":0},"7":{"ID":7,"URL":"https://de.wikipedia.org","Title":"german wikipedia","Lists":["wiki"],"Ctime":"2021-04-02T19:25:23.7522075-07:00","Mtime":"2021-04-03T02:25:23.752248Z","Atime":"2021-04-02T19:25:23.7522075-07:00","Dtime":"2081-07-17T07:12:00Z","LinkVariables":{},"Clicks":0}},"NextLinkID":8}`)
+	db := MakeNewLinkDatabase()
+	LinkDataBase = db
+
+	err := db.Import(dbString)
+	if err != nil {
+		t.FailNow() // this should have worked
+	}
+	if len(LinkDataBase.Lists) != 1 {
+		fmt.Println(LinkDataBase)
+		t.FailNow()
+	}
+	if len(LinkDataBase.Links) != 6 {
+		fmt.Println(LinkDataBase)
+		t.FailNow()
+	}
+}
+
+func TestExport(t *testing.T) {
+	dbString := strings.NewReader(`{Lists":{"wiki":{"Keyword":"wiki","Links":{"4":{"ID":4,"URL":"https://en.wikipedia.org/wiki/{1}","Title":"english wikipedia","Lists":["wiki"],"Ctime":"2021-03-02T21:29:53.190845282Z","Mtime":"2021-03-02T21:29:53.190846649Z","Atime":"2021-03-02T21:29:53.190845282Z","Dtime":"2081-07-17T07:12:00Z","LinkVariables":{"1":"burrito"},"Clicks":0},"5":{"ID":5,"URL":"https://it.wikipedia.org","Title":"italian wikipedia","Lists":["wiki"],"Ctime":"2021-04-02T19:25:13.0299362-07:00","Mtime":"2021-04-03T02:25:13.0299745Z","Atime":"2021-04-02T19:25:13.0299362-07:00","Dtime":"2081-07-17T07:12:00Z","LinkVariables":{},"Clicks":0},"6":{"ID":6,"URL":"https://es.wikipedia.org","Title":"spanish wikipedia","Lists":["wiki"],"Ctime":"2021-03-02T21:28:42.998908802Z","Mtime":"2021-03-02T21:28:42.998915106Z","Atime":"2021-03-02T21:28:42.998908802Z","Dtime":"2081-07-17T07:12:00Z","LinkVariables":null,"Clicks":0},"7":{"ID":7,"URL":"https://de.wikipedia.org","Title":"german wikipedia","Lists":["wiki"],"Ctime":"2021-04-02T19:25:23.7522075-07:00","Mtime":"2021-04-03T02:25:23.752248Z","Atime":"2021-04-02T19:25:23.7522075-07:00","Dtime":"2081-07-17T07:12:00Z","LinkVariables":{},"Clicks":0}},"Behavior":-2,"Clicks":7,"Usage":"","Logging":true,"TagBindings":{"4":["en"],"5":["it","italian"],"6":["es"],"7":["de","german"]}}},"Links":{"0":{"ID":1,"URL":"http://127.0.0.1","Title":"This is a default.","Lists":[""],"Ctime":"2021-02-22T07:41:36.914130327Z","Mtime":"2021-02-22T07:41:36.914130327Z","Atime":"2021-02-22T07:41:36.914130327Z","Dtime":"2081-07-17T07:12:00Z","LinkVariables":null,"Clicks":0},"1":{"ID":1,"URL":"http://127.0.0.1","Title":"This is a default.","Lists":[""],"Ctime":"2021-02-22T07:41:36.914130327Z","Mtime":"2021-02-22T07:41:36.914130327Z","Atime":"2021-02-22T07:41:36.914130327Z","Dtime":"2081-07-17T07:12:00Z","LinkVariables":null,"Clicks":0},"4":{"ID":4,"URL":"https://en.wikipedia.org/wiki/{1}","Title":"english wikipedia","Lists":["wiki"],"Ctime":"2021-03-02T21:29:53.190845282Z","Mtime":"2021-03-02T21:29:53.190846649Z","Atime":"2021-03-02T21:29:53.190845282Z","Dtime":"2081-07-17T07:12:00Z","LinkVariables":{"1":"burrito"},"Clicks":0},"5":{"ID":5,"URL":"https://it.wikipedia.org","Title":"italian wikipedia","Lists":["wiki"],"Ctime":"2021-04-02T19:25:13.0299362-07:00","Mtime":"2021-04-03T02:25:13.0299745Z","Atime":"2021-04-02T19:25:13.0299362-07:00","Dtime":"2081-07-17T07:12:00Z","LinkVariables":{},"Clicks":0},"6":{"ID":6,"URL":"https://es.wikipedia.org","Title":"spanish wikipedia","Lists":["wiki"],"Ctime":"2021-03-02T21:28:42.998908802Z","Mtime":"2021-03-02T21:28:42.998915106Z","Atime":"2021-03-02T21:28:42.998908802Z","Dtime":"2081-07-17T07:12:00Z","LinkVariables":null,"Clicks":0},"7":{"ID":7,"URL":"https://de.wikipedia.org","Title":"german wikipedia","Lists":["wiki"],"Ctime":"2021-04-02T19:25:23.7522075-07:00","Mtime":"2021-04-03T02:25:23.752248Z","Atime":"2021-04-02T19:25:23.7522075-07:00","Dtime":"2081-07-17T07:12:00Z","LinkVariables":{},"Clicks":0}},"NextLinkID":8}`)
+	db := MakeNewLinkDatabase()
+	LinkDataBase = db
+	db.Import(dbString)
+	buf := new(bytes.Buffer)
+
+	err := LinkDataBase.Export(buf)
+
+	fmt.Printf("Buffer: %v", buf)
+	if err != nil {
+		t.FailNow()
+	}
+	_, err = json.Marshal(buf)
+	if err != nil {
 		t.Fail()
 	}
 }
