@@ -2,8 +2,11 @@ package http
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/cwbooth5/go2redirector/core"
 )
@@ -49,6 +52,20 @@ func TestGetExternalRedirectorAddress(t *testing.T) {
 		t.Fail()
 	}
 
+}
+
+func TestRouteLogin(t *testing.T) {
+	w := httptest.NewRecorder()
+	r, _ := http.NewRequest("GET", "/", nil)
+	cookie := http.Cookie{
+		Name:    "redirectorlogin",
+		Value:   "trogdor",
+		Expires: time.Unix(0, 0), // expiry not relevant in this test
+	}
+	http.SetCookie(w, &cookie)
+
+	h := http.HandlerFunc(RouteLogin)
+	h.ServeHTTP(w, r)
 }
 
 // If this isn't here, logging calls during functions we are testing cause a SEGV
