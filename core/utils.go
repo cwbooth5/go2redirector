@@ -88,7 +88,11 @@ func TopLink(ll ListOfLinks) *Link {
 func Shutdown() {
 	//TODO: actual cleanup code. dump db to disk
 	LogInfo.Println("Signal caught. Shutting down...")
-	LinkDataBase.Export(GodbFileName)
+	fh, err := os.Create(GodbFileName)
+	if err != nil {
+		LogError.Fatalf("Could not export to %s\n", GodbFileName)
+	}
+	LinkDataBase.Export(fh)
 	RedirectorMetadata.Export("go2metadata.json")
 }
 
@@ -106,7 +110,11 @@ func CheckpointDB(duration string) {
 
 		// purpose 2: export the db to local disk as a backup
 		fileName := fmt.Sprintf("%s.bak", GodbFileName)
-		err := LinkDataBase.Export(fileName)
+		fh, err := os.Create(GodbFileName)
+		if err != nil {
+			LogError.Fatalf("Could not export to %s\n", GodbFileName)
+		}
+		err = LinkDataBase.Export(fh)
 		if err != nil {
 			LogError.Fatalf("DB checkpoint to file '%s' failed. %s", fileName, err)
 		}

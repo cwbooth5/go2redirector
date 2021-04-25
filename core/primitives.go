@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net/url"
 	"sort"
@@ -364,14 +364,10 @@ func MakeNewLinkDatabase() *LinkDatabase {
 	}
 }
 
-func (d *LinkDatabase) Import(filename string) error {
+func (d *LinkDatabase) Import(fh io.Reader) error {
 	var tempdb LinkDatabase
 	var err error
-	data, err := ioutil.ReadFile(filename)
-	if err != nil {
-		LogError.Println("DB file was not found! Run the install script to create one.")
-		return err
-	}
+	data, _ := io.ReadAll(fh)
 
 	err = json.Unmarshal(data, &tempdb)
 	if err != nil {
@@ -384,17 +380,16 @@ func (d *LinkDatabase) Import(filename string) error {
 }
 
 // export the entire DB into a JSON file on disk.
-func (d *LinkDatabase) Export(f string) error {
+func (d *LinkDatabase) Export(fh io.Writer) error {
 	file, err := json.Marshal(*d)
 	if err != nil {
 		LogError.Println("JSON marshal error:", err)
 		return err
 	}
-	err = ioutil.WriteFile(f, file, 0644)
+	_, err = fh.Write(file)
 	if err != nil {
 		LogError.Fatal(err)
 	}
-	// LogInfo.Printf("Link DB exported to %s.\n", f)
 	return err
 }
 

@@ -419,10 +419,13 @@ func main() {
 
 		// load the link database off the disk.
 		core.LogDebug.Printf("Loading link database from file: %s", importPath)
-		err = core.LinkDataBase.Import(importPath)
+		fh, err := os.Open(importPath)
+		if err != nil {
+			core.LogError.Println("DB file could not be opened! Run the install script to create one.")
+		}
+		err = core.LinkDataBase.Import(fh)
 		if err != nil {
 			core.LogDebug.Println(err)
-			//core.LogDebug.Fatalf("Could not load link database from file %s\n", importPath)
 		}
 
 		// If the file is found on disk, init metadata with that file.
@@ -441,7 +444,7 @@ func main() {
 		go core.PruneExpiringLinks()
 		go core.CheckpointDB("300s")
 		ipPort := configureWebserver(listenAddress, listenPort)
-		err := http.ListenAndServe(ipPort, nil)
+		err = http.ListenAndServe(ipPort, nil)
 		if err != nil {
 			core.LogError.Fatal(err)
 		}
