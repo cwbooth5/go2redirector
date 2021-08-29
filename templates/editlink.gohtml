@@ -262,12 +262,14 @@ window.addEventListener('load', function() {
       <div class="card-body">
         <p>URLs can have a single positional <code>{variable}</code> within, which is the last field a user types in a redirect. The only supported value right now is <code>{1}</code>.</p>
         <p>The possible redirects to this link: <br>
+        {{/* The check for the list here prevents crashes due to garbage returnto= fields input by the user */}}
         {{ $thislist := .GetMyList .Keyword }}
-        {{ if ne .LinkBeingEdited.ID 0 }}
+        {{ $isNotLinkZero := ne .LinkBeingEdited.ID 0 }}
+        {{ if and $isNotLinkZero $thislist }}
           {{ $usages := $thislist.GetUsages .LinkBeingEdited.ID }}
-          {{ range $usage := $usages }}
-          <code>{{ $usage }}</code><br>
-          {{ end }}
+            {{ range $usage := $usages }}
+            <code>{{ $usage }}</code><br>
+            {{ end }}
           {{ if $special }}
           <p>...where "parameter" is any string which makes sense to subsititute into this URL for <code>{1}</code>.</p>
           {{ end }}
