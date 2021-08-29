@@ -210,7 +210,7 @@ func RouteLogin(w http.ResponseWriter, r *http.Request) {
 	// Right now, this only supports POST requests to change their cookie.
 	if r.Method == "POST" {
 		// Login interface
-		// We get their name, set their cookie, then redirect back to index
+		// We get their name, set their cookie, then redirect back to Referer
 		// To log them out, we set their cookie TTL to expire.
 
 		core.LogDebug.Println("post to _login_")
@@ -244,7 +244,7 @@ func RouteLogin(w http.ResponseWriter, r *http.Request) {
 
 		// We always set a cookie. TTL determines login/logout
 		http.SetCookie(w, &cookie)
-		http.Redirect(w, r, fmt.Sprintf("%s/", core.ListenURL()), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf("%s/", r.Referer()), http.StatusFound)
 	}
 }
 
