@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -23,7 +24,7 @@ var Bufpool *bpool.BufferPool
 
 type ModelIndex struct {
 	Title              string
-	LinkDB             core.LinkDatabase
+	LinkDB             *core.LinkDatabase
 	Keyword            core.Keyword
 	KeywordExists      bool
 	KeywordBeingEdited bool
@@ -33,8 +34,9 @@ type ModelIndex struct {
 	Overrides          map[string]string
 	KeywordParams      []string
 	UsageLog           []string
-	ErrorMessage       string
-	ActiveUser         string // empty string means not logged in
+	ErrorMessage       string   // user-facing error strings for templates
+	ActiveUser         string   // empty string means not logged in
+	Variable           []string // works with strings and maps. first is key, second value
 }
 
 // GetBehavior returns a string representation of the behavior for a model's keyword.
@@ -95,7 +97,7 @@ func (m *ModelIndex) AtimeSort(k core.Keyword) []*core.Link {
 	return temp
 }
 
-// //sort on the most recent mtime, descending
+// sort on the most recent mtime, descending
 func (m *ModelIndex) MtimeSort(k core.Keyword) []*core.Link {
 	target := core.LinkDataBase.Lists[k].Links
 	temp := []*core.Link{}
@@ -108,7 +110,6 @@ func (m *ModelIndex) MtimeSort(k core.Keyword) []*core.Link {
 
 // The template can use this to get a nicer string explaining mtime.
 func (m *ModelIndex) PrettyTime(t time.Time) string {
-	// Dates in the future
 	if t == core.Never {
 		return "never"
 	}
@@ -117,7 +118,8 @@ func (m *ModelIndex) PrettyTime(t time.Time) string {
 	now := time.Now()
 	if t.After(now) {
 		sub := t.Sub(now)
-		return fmt.Sprintf("%s", sub.Truncate(time.Second))
+		x := fmt.Sprintf("%s", sub.Truncate(time.Second))
+		return x
 	}
 
 	// Dates in the past - This uses 30 days/720 hours for a month
@@ -190,6 +192,11 @@ func (m *ModelIndex) GetExternalRedirectorAddress() string {
 	return core.ExternalAddress
 }
 
+// external protocol. 'http' or 'https', defined in the config file
+func (m *ModelIndex) GetExternalRedirectorProto() string {
+	return core.ExternalProto
+}
+
 func (m *ModelIndex) GetListEdits(k core.Keyword) []*core.EditRecord {
 	return core.RedirectorMetadata.ListEdits[k]
 }
@@ -198,25 +205,67 @@ func (m *ModelIndex) GetLinkEdits(id int) []*core.EditRecord {
 	return core.RedirectorMetadata.LinkEdits[id]
 }
 
-// GetSimilar locates similarly-named keywords from an existing list of links.
-func (m *ModelIndex) GetSimilar() []core.Keyword {
-	targets := []core.Keyword{}
-	s1 := string(m.Keyword)
-	allLists := m.LinkDB.Lists
-	// allLists := core.LinkDataBase.Lists
-	for _, val := range allLists {
-		s2 := string(val.Keyword)
-		if s1 == s2 {
-			continue
-		}
-		ratio := core.Similar(s1, s2)
-		if ratio < core.LevDistRatio && s1 != s2 {
-			// low ratio
-			targets = append(targets, val.Keyword)
-		} else if strings.Contains(s1, s2) || strings.Contains(s2, s1) {
-			// substring match
-			targets = append(targets, val.Keyword)
+// GetSimilar locates keywords which are named similarly or which have tags or links
+// containing substring matches to the search term.
+func (m *ModelIndex) GetSimilar() []string {
+	searchTerm := string(m.Keyword)
+	results := core.SearchDB(searchTerm, 20)
+	return results
+}
+
+// This is used so the template has all variables available to put into tables.
+func (m *ModelIndex) GetStringVariables() map[string]string {
+	return m.LinkDB.Variables.Strings
+}
+
+func (m *ModelIndex) GetMapVariables() []string {
+	// for now just return map variable names. No values yet
+	mapNames := []string{}
+	for name := range m.LinkDB.Variables.Maps {
+		mapNames = append(mapNames, name)
+	}
+	return mapNames
+}
+
+func (m *ModelIndex) GetMapVariable(n string) map[string]string {
+	v := make(map[string]string)
+	if mapvar, exists := core.LinkDataBase.Variables.Maps[n]; exists {
+		v = mapvar
+	}
+	return v
+}
+
+// extractions
+func (m *ModelIndex) GetExtraction() core.ExtractionCapture {
+	if _, exists := core.LinkDataBase.Lists[m.Keyword]; !exists {
+		return core.ExtractionCapture{ExampleParam: "", Regex: ""}
+	}
+	exts := core.LinkDataBase.Lists[m.Keyword].Extractions
+	return exts[m.LinkBeingEdited.ID]
+}
+
+// Get all links containing a map variable
+func (m *ModelIndex) GetMapMemberships() map[string][]int {
+	// look through all links
+	// for each containing a variable:
+	// add the link id as key, list memberships as value
+
+	// map[variablename] = [*link, *link, ...]
+	varsFound := make(map[string][]int)
+	re := regexp.MustCompile(`{\$[-\w_~]+\[[-\w_~]+\]}`)
+	for _, link := range core.LinkDataBase.Links {
+		if re.Match([]byte(link.URL)) { // TODO, needed if doing the cap groups below?
+			re2 := regexp.MustCompile(`{\$([-\w_~]+)\[[-\w_~]+\]}`)
+			varnames := re2.FindAllStringSubmatch(link.URL, -1)
+			for _, name := range varnames { // each name is a an array of [wholematch, capture]
+				varsFound[name[1]] = append(varsFound[name[1]], link.ID)
+			}
 		}
 	}
-	return targets
+	return varsFound
+}
+
+// Get a link object by integer ID
+func (m *ModelIndex) GetLink(id int) core.Link {
+	return *core.LinkDataBase.GetLink(id, "")
 }

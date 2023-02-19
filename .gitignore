@@ -24,3 +24,6 @@ dist/
 redirector.log
 go2redirector
 go2metadata.json
+opensearch.xml
+.vscode/*
+*go2backup.json

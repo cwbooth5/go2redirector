@@ -1,0 +1,150 @@
+{{ define "title" }}<title>{{ .Title }}</title>{{ end }}
+<div class="container-fluid">
+    {{ define "content" }}
+      <script type="text/javascript" src="/static/js/jquery.min.js"></script>
+      <script>
+        window.addEventListener("load", function() {
+            addmapinputs();
+        });
+      function handleErrors(response) {
+        if (!response.ok) {
+            throw Error(response.statusText);
+        }
+        return response;
+      }
+      async function addmapinputs() {
+        mapform.onsubmit = async (e) => {
+          e.preventDefault();
+          var mapval = document.getElementById("mapvalue").value;
+          var payload = {
+            namespace: "global",
+            values: mapval
+          };
+          var mapname = document.getElementById("mapname").value;
+          var formData = JSON.stringify(payload);
+          let response = await fetch(`/api/variables/maps/${mapname}`, {
+            method: "POST",
+            body: formData
+          })
+          .then(handleErrors)
+          .then(response => {
+            console.log("map updated successfully");
+            let result = response.json();
+            document.getElementById("mapname").value = "";
+            document.getElementById("mapvalue").value = "";
+            location.replace("/_maps_");
+          })
+          .catch(error => {
+            console.log(error);
+            errdiv = document.getElementById("errorcontainer");
+            errdiv.innerHTML = `<div class="alert alert-warning" role="alert">${error.message}</div>`;
+          });
+        };
+        mapdelete.onsubmit = async (e) => {
+          e.preventDefault();
+          var mapname = document.getElementById("mapname").value;
+          let response = await fetch(`/api/variables/maps/${mapname}`, {
+              method: "DELETE"
+          });
+          let result = await response.json();
+          document.getElementById("mapname").value = "";
+          document.getElementById("mapvalue").value = "";
+          location.replace("/_maps_");
+        }
+      }
+      </script>
+
+    <div class="row">
+         <div class="col-sm-6" style="margin-bottom: 10px;">
+            <div class="card">
+              <div class="card-header">
+                <div class="alert alert-warning" role="alert">
+                  Do not modify variables here unless you know what you are doing!
+                </div>
+                <div id=errorcontainer></div>
+                <h4 class="center">Map Variable</h4>
+              </div>
+
+            {{/* form action is being set in js because map name is needed in the API URL we hit*/}}
+            <form id="mapform" method="POST">
+            <input type="hidden" name="internal" value="true"/>
+            <table class="table linkedit">
+            {{ $numVars := len .Variable }}
+            {{ $VariableIsBeingEdited := gt $numVars 0 }}
+              <tr>
+                <td>Name</td>
+                <td>
+                  <input type="text" name="name" {{ if $VariableIsBeingEdited }}value="{{ index .Variable 0 }}"{{ end }} id="mapname" class="form-control" placeholder="" required/>
+                </td>
+              </tr>
+              <tr>
+                <td>Value</td>
+                <td>
+                  <textarea name="value" id="mapvalue" rows="4" cols="50" class="form-control" required>{{ if $VariableIsBeingEdited }}{{ index .Variable 1 }}{{ end }}</textarea>
+                <small class="form-text text-muted">
+                  colon-delimited, one pair per line
+                  </small>
+                </td>
+              </tr>
+              {{ if ne .ActiveUser "" }}
+              <tr>
+              <td>
+              </td>
+                <td>
+                  <button id="mapsubmit" class="btn btn-outline-primary" type="submit" title="Submit Changes" value="Submit Changes">Submit Changes</button>
+                  </form>
+                  <form id="mapdelete">
+                  <button class="btn btn-outline-secondary" type="submit" title="Delete this map variable" value="true" name="delete"{{ if eq .ActiveUser "" }}disabled{{ end }}>Delete this</button>
+                  </form>
+                </td>
+              </tr>
+              {{ end }}
+
+            </table>
+            </div>
+        </div>
+
+
+                <div class="col-sm-6" style="margin-bottom: 10px;">
+            <div class="card">
+              <div class="card-header">
+                <h4 class="center">Available</h4>
+              </div>
+              <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Map Name</th>
+                      <th>Links Using This Map</th>
+                      <th>{{/*this is empty so the edit button gets a header*/}}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  {{ $allMemberships := .GetMapMemberships }}
+                  {{ range .GetMapVariables }}
+                    <tr>
+                      <td>
+                      {{ . }}
+
+                      </td>
+                      <td>
+                      {{/* variable value would go here */}}
+                      {{ $linkids := index $allMemberships . }}
+                      {{/* {{ $linkids }} */}}
+                      {{ range $linkids }}
+                      {{ $thislink := $.GetLink . }}
+                      {{/* this just grabs the first membership until a more sophisticated UX is designed */}}
+                      {{ $firstlist := index $thislink.Lists 0 }}
+                      <a title="{{ $thislink.Title }}" href="/_link_/{{ . }}?returnto={{ $firstlist }}">{{ . }}</a>
+                      {{ end }}
+                      </td>
+                      <td><a role="button" class="btn btn-outline-secondary btn-sm" title="Edit variable" href="/_maps_/{{ . }}">edit</a></td>
+                    </tr>
+                  {{ end }}
+                  </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+{{ end }}

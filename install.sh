@@ -18,10 +18,12 @@ JSON=$(grep -v '^ *#' << EOF
     "external_address": "localhost",
 # If the redirector is behind an NAT or load balancer, this would be the client-facing port.
     "external_port": 8080,
+# If behind a NAT or LB, this is the http or https protocol they use for initial requests.
+    "external_proto": "http",
     "godb_filename": "godb.json",
 # The redirector name in both the go2/ redirects themselves and the HTML templates
     "redirector_name": "go2",
-# The time interval for the redirector to prune links
+# The time interval for the redirector to prune expiring links
     "prune_interval": "1m",
 # The default behavior of newly-created lists of links (rList, rTop, rFreshest, rRandom)
     "new_list_behavior": "rFreshest",

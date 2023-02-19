@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
@@ -58,7 +57,9 @@ func generateSeed() int {
 	return r.Intn(1000000)
 }
 
-func (d LinkDatabase) ExportNetwork() error {
+func (d *LinkDatabase) ExportNetwork() error {
+	d.m.Lock()
+	defer d.m.Unlock()
 	file, err := json.Marshal(d)
 	if err != nil {
 		LogError.Println("JSON marshal error:", err)
@@ -110,12 +111,11 @@ func RunFailoverMonitor(updates chan *LinkDatabase) {
 		if err != nil {
 			continue
 		}
-		defer conn.Close()
 		// Two cases here.
 		// 1. The data arriving is a diceroll from a peer coming up. (we are active)
 		// 2. The data arriving is a DB we need to load into memory. (we are standby)
-		data, err := ioutil.ReadAll(conn)
-		result := strings.TrimSpace(fmt.Sprintf("%s", data))
+		data, _ := io.ReadAll(conn)
+		result := strings.TrimSpace(string(data))
 		if strings.HasPrefix(result, "diceroll") {
 			// case 1
 			// Send back a high number, impossible for the peer to beat, forcing them standby.
@@ -163,7 +163,7 @@ func Synchronize() {
 	}
 	conn.CloseWrite()
 
-	r, err := ioutil.ReadAll(conn)
+	r, _ := io.ReadAll(conn)
 	// result should be a diceroll from the other side. See who's higher.
 	result := strings.TrimSpace(string(r))
 	if strings.HasPrefix(result, "diceroll") {

@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"html"
 	"log"
 	"net/http"
 	"os"
@@ -21,83 +20,101 @@ import (
 	"github.com/oxtoacart/bpool"
 )
 
-// If a page needs to be rendered, that is returned along with a model.
-// If a redirect can be performed, it is done straight from this function.
-func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.ModelIndex, bool, error) {
-	// If the keyword has nothing following it, perform a lookup.
-	//    doesn't exist - editlink page
-	//    does exist - follow behavior
-	// LogDebug.Println("this is the handleKeyword function")
+func handleKeyword(w http.ResponseWriter, r *http.Request, check chan<- string) (string, gohttp.ModelIndex, bool, error) {
+
 	var tmpl string
 	var model gohttp.ModelIndex
-	var redirect bool
+	var redirect, complete bool
 	var err error
-	var complete bool
 
-	core.LogDebug.Printf("URL path being parsed: %s\n", r.URL.Path)
-	pth, err := core.ParsePath(r.URL.Path)
-	core.LogDebug.Printf("Resulting keyword: %s\n", pth.Keyword)
-	inputKeyword := r.URL.Query().Get("keyword") // only set if they entered a keyword in the input box
-	if inputKeyword != "" {
-		core.LogDebug.Printf("User supplied/input box keyword: %s\n", inputKeyword)
-		// if the keyword has/slashes/within then we need to just use the first field here.
-		inputSplit := strings.Split(inputKeyword, "/")
-		pth.Keyword, err = core.MakeNewKeyword(inputSplit[0])
-		if err != nil {
-			msg := fmt.Sprintf("Your keyword of '%s' was not valid. %s'", html.EscapeString(inputKeyword), err.Error())
-			tmpl = "404.gohtml"
-			model.ErrorMessage = msg
-			w.WriteHeader(http.StatusBadRequest)
-			return tmpl, model, redirect, err
-		}
-		if len(inputSplit) > 1 {
-			pth.Tag = inputSplit[1]
-		}
-		if len(inputSplit) > 2 {
-			pth.Params = append(pth.Params, inputSplit[2])
-		}
-		if core.EditMode(inputKeyword) {
-			tmpl, model, err = gohttp.RenderListPage(r)
-			return tmpl, model, redirect, err
-		}
+	request, err := core.MakeNewGoRequest(r)
+	if err != nil || !request.Valid {
+		check <- err.Error()
+		return tmpl, model, redirect, err
 	}
-	core.LogDebug.Printf("parsed path Keyword: %s\n", pth.Keyword)
-	core.LogDebug.Printf("parsed path Tag: %s\n", pth.Tag)
-	core.LogDebug.Printf("parsed path Params: %s\n", pth.Params)
-	ll, exists := core.LinkDataBase.Lists[pth.Keyword]
+
+	msg := fmt.Sprintf("incoming URL path: %s", request.Path)
+	core.LogDebug.Println(msg)
+	check <- msg
+
+	if request.EditMode {
+		tmpl, model, _ = gohttp.RenderListPage(r)
+	}
+
+	// based on path length, handle as a redirect
+	check <- fmt.Sprintf("parsed path length: %d", request.Path.Len())
+	msg = fmt.Sprintf("Parsed keyword: '%s', tag: '%s', parameter: '%s'", request.Path.Keyword, request.Path.Tag, request.Path.Params)
+	check <- msg
+
+	ll, exists := core.LinkDataBase.Lists[request.Path.Keyword]
 	if !exists {
-		core.LogDebug.Printf("keyword '%s' does not exist.\n", pth.Keyword)
+		msg = fmt.Sprintf("keyword '%s' does not exist, rendering list page", request.Path.Keyword)
+		core.LogDebug.Println(msg)
+		check <- msg
 		tmpl, model, err = gohttp.RenderListPage(r)
 		return tmpl, model, redirect, err
 	} else { //deboog
-		core.LogDebug.Println("keyword found, proceeding to follow path...")
-		core.PrintList(*ll)
+		msg = "keyword found, proceeding to follow path..."
+		core.LogDebug.Println(msg)
+		check <- msg
 	}
-	core.LogDebug.Printf("parsed path length: %d\n", pth.Len())
+
+	check <- fmt.Sprintf("This list's behavior: %d", ll.Behavior)
 
 	switch {
-	case pth.Len() == 1:
+	case request.Path.Len() == 1:
+		var url string
 		// first use case: /keyword (bare, no additional slash-delimited fields)
 		// We returned early if this didn't exist, so we know it is in the db now.
-		if core.EditMode(string(pth.Keyword)) {
+		if core.EditMode(string(request.Path.Keyword)) {
 			tmpl, model, err = gohttp.RenderListPage(r) // force to the list edit page
 		} else {
 			// It's a real redirect, follow the list's behavior now.
 			lnk := core.LinkDataBase.GetLink(-1, ll.GetRedirectURL())
 			if lnk.Special() {
-				// They asked to be redirected, but didn't provide that second field.
-				msg := fmt.Sprintf("The redirect URL for this list requires a substitution parameter. Try '%s/(pattern)'.", pth.Keyword)
-				tmpl, model, err = gohttp.RenderListPage(r)
-				model.ErrorMessage = msg
-				core.LogDebug.Println("Link is special, errors, we are returning....")
+				// If the link has substitutions, attempt to complete them using getURL.
+				// If that completes the URL, redirect them.
+				url, _, err = core.GetURL(lnk.URL, make(map[string]string), make(map[string]string), lnk.LinkVariables, check)
+				if err != nil {
+					tmpl, model, _ = gohttp.RenderListPage(r)
+					// They screwed up their input - left out a parameter maybe?
+					model.ErrorMessage = err.Error()
+					return tmpl, model, redirect, err
+				}
+				msg = "This link is special (has substitutions in its URL)"
+			} else {
+				msg = "This link contains no substitutions in its URL"
+			}
+			check <- msg
+
+			// check mode: render check page early
+			if core.GetCheckMode(r) {
+				core.LogDebug.Printf("CHECK MODE (%s): returning early\n", request.StringPath())
 				return tmpl, model, redirect, err
 			}
+
+			if lnk.Special() && !complete {
+				// listpage := fmt.Sprintf("/.%s", ll.Keyword)
+				// http.Redirect(w, r, listpage, http.StatusTemporaryRedirect)
+				errmsg := fmt.Sprintf("Generated URL is incomplete: '%s'", url)
+
+				tmpl, model, _ = gohttp.RenderListPage(r) // force to the list edit page
+				model.ErrorMessage = errmsg
+				return tmpl, model, redirect, err
+			}
+
 			lnk.Clicks++
 			core.LogDebug.Printf("Bare keyword redirect on '%s', clicks: %d\n", ll.Keyword, lnk.Clicks)
-			core.LogInfo.Printf("Path '%s' redirect rendered: %s\n", pth.Keyword, ll.GetRedirectURL())
+			core.LogInfo.Printf("Path '%s' redirect rendered: %s\n", request.Path.Keyword, ll.GetRedirectURL())
+			check <- fmt.Sprintf("The URL this will redirect to: %s", lnk.URL)
+
 			// Note we need to redirect THEN destroy the link.
 			redirect = true
-			http.Redirect(w, r, ll.GetRedirectURL(), 307)
+			if url != "" && !lnk.Special() {
+				http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+			} else {
+				http.Redirect(w, r, ll.GetRedirectURL(), http.StatusTemporaryRedirect)
+			}
 			if lnk.Dtime == core.BurnTime {
 				core.LogInfo.Printf("Link %d is being burned.\n", lnk.ID)
 				core.DestroyLink(lnk)
@@ -105,118 +122,180 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 		}
 		return tmpl, model, redirect, err
 
-	case pth.Len() == 2:
+	case request.Path.Len() == 2:
 		// second use case: /keyword/param||tag
 		// Check to see if the second term in the array starts with . or ends with /
 		//     If so, we are rendering the link edit page for that link.
 		//     If not, it is a bare tag.
 
 		// The tag could have a leading dot or trailing slash. If so, that is an EDIT.
-		if core.EditMode(pth.Tag) {
+		if core.EditMode(request.Path.Tag) {
 			tmpl, model, err = gohttp.RenderLinkPage(r)
 			return tmpl, model, redirect, err
 		}
 
-		// What if they entered /keyword/param, where param was really a substitution they want to do?
-		// algorithim: Look on the list to see if the redirectURL contains a substitution for this.
-		//    if any {variable} is present in the url, treat this second value as a _parameter_
-		//    if the sub is not present, treat this value as a _tag_ identifying a link in the list.
-
 		// Check for the use case of "existing keyword but missing tag"
 		var tagfound bool
 		for id, tagList := range ll.TagBindings {
+			// This check is a stopgap for the effects of a bug where decoupling
+			// left orphaned tagbindings on a list of links.
+			if _, ok := ll.Links[id]; !ok {
+				core.LogInfo.Printf("orphaned tag %d found on list %s\n", id, ll.Keyword)
+				continue
+			}
 			for _, tag := range tagList {
-				if pth.Tag == tag {
+				if request.Path.Tag == tag {
+					var url string
 					tagfound = true
-					core.LogDebug.Printf("Tag '%s' located on list, link ID %d\n", pth.Tag, id)
+					core.LogDebug.Printf("Tag '%s' located on list, link ID %d\n", request.Path.Tag, id)
 					l := core.LinkDataBase.GetLink(id, "")
-					if !l.Special() {
-						l.Clicks++
-						core.LogDebug.Println("Redirecting based on tag")
-						core.LogInfo.Printf("Path '%s/%s' redirect rendered: %s\n", pth.Keyword, pth.Tag, l.URL)
-						http.Redirect(w, r, l.URL, 307)
-						redirect = true
-						if l.Dtime == core.BurnTime {
-							core.LogInfo.Printf("Link %d is being burned.\n", l.ID)
-							core.DestroyLink(l)
+					if l.Special() { // special links get their URL changed with all the replacements.
+						// If the link has substitutions, attempt to complete them using getURL.
+						// If that completes the URL, redirect them.
+						url, _, err = core.GetURL(l.URL, make(map[string]string), make(map[string]string), l.LinkVariables, check)
+						if err != nil {
+							tmpl, model, _ = gohttp.RenderListPage(r)
+							// They screwed up their input - left out a parameter maybe?
+							model.ErrorMessage = err.Error()
+							return tmpl, model, redirect, err
 						}
+						msg = "This link is special (has substitutions in its URL)"
+					} else {
+						url = l.URL
+						msg = "link is not special, has no replacements to do"
+					}
+
+					// common things to do when we found a matching tag and got our URL to redirect to.
+					check <- msg
+
+					// check mode: render check page early
+					if core.GetCheckMode(r) {
+						check <- fmt.Sprintf("The URL this will redirect to: %s", url)
+						core.LogDebug.Printf("CHECK MODE (%s): returning early\n", request.StringPath())
 						return tmpl, model, redirect, err
 					}
+
+					l.Clicks++
+					core.LogInfo.Printf("Path '%s/%s' redirect rendered: %s\n", request.Path.Keyword, request.Path.Tag, url)
+					core.LogDebug.Println("Redirecting based on tag")
+					http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+
+					redirect = true
+					if l.Dtime == core.BurnTime {
+						msg = fmt.Sprintf("Link %d is being burned.\n", l.ID)
+						core.LogInfo.Println(msg)
+						core.DestroyLink(l)
+					}
+
+					return tmpl, model, redirect, err
 				}
 			}
 		}
 		if !tagfound {
-			core.LogDebug.Printf("Tag '%s' was not found under keyword '%s'.\n", pth.Tag, pth.Keyword)
+			// This is the main branch for go2 thing/fancy-dynamic-parameter
+			msg := fmt.Sprintf("Tag '%s' was not found under keyword '%s'", request.Path.Tag, request.Path.Keyword)
+			check <- msg
+			core.LogDebug.Println(msg)
 			// Now we try to use their input as a parameter.
 			url := ll.GetRedirectURL()
+
+			core.LogDebug.Printf("Redirect URL for this list of links: '%s'\n", url)
+			/*
+				This could be a confusing spot for the user if they have redirect to "this page" and
+				a substitution in their URL.
+			*/
+			if ll.Behavior == core.RedirectToList {
+				check <- "behavior is 'this page' so user will land on edit page for this keyword"
+			}
+
 			if strings.ContainsAny(url, "{}") {
+
 				// pth.Tag is being treated as a substitution parameter/variable
+				msg = "final field is not a tag, so it is being treated as an input parameter"
+				check <- msg
 				l := core.LinkDataBase.GetLink(-1, url)
 				l.Clicks++
-				url, complete, err = gohttp.RenderSpecial(r, []string{pth.Tag}, l, ll)
-				if complete {
-					// substitution complete, they are redirected to the URL.
-					core.LogInfo.Printf("Path '%s/%s' redirect rendered: %s\n", pth.Keyword, pth.Tag, url)
-					http.Redirect(w, r, url, 307)
+				url, complete, err = gohttp.RenderSpecial([]string{request.Path.Tag}, l, ll, check)
+
+				if err != nil {
+					return tmpl, model, redirect, err
+				}
+				if complete { // substitution complete, they are redirected to the URL.
+
+					msg = fmt.Sprintf("Path '%s/%s' redirect rendered: %s\n", request.Path.Keyword, request.Path.Tag, url)
+					core.LogInfo.Println(msg)
+					check <- msg
 					redirect = true
-					if l.Dtime == core.BurnTime {
-						core.LogInfo.Printf("Link %d is being burned.\n", l.ID)
-						core.DestroyLink(l)
+
+					msg = fmt.Sprintf("Redirecting user to: %s\n", url)
+					core.LogInfo.Println(msg)
+					check <- msg
+
+					// If check mode enabled, don't modify anything. Send to check page.
+					if core.GetCheckMode(r) {
+						core.LogDebug.Printf("CHECK MODE (%s): returning early\n", request.StringPath())
+					} else {
+						if l.Dtime == core.BurnTime {
+							core.LogInfo.Printf("Link %d is being burned.\n", l.ID)
+							core.DestroyLink(l)
+						}
+						http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 					}
+
 					return tmpl, model, redirect, err
 				}
 			} else {
 				// pth.Tag is being treated as a tag to look up a link in this list.
-				core.LogDebug.Printf("resolved redirectURL contains no variables. %s\n", url)
-				// search for the tag in this list. If it is there, redirect to that link. If not, edit list page is rendered
-				for id, tagList := range ll.TagBindings {
-					for _, tag := range tagList {
-						if pth.Tag == tag {
-							core.LogDebug.Printf("Tag '%s' was found on list '%s'\n", pth.Tag, ll.Keyword)
-							lnk := ll.Links[id]
-							lnk.Clicks++
-							core.LogInfo.Printf("Path '%s/%s' redirect rendered: %s\n", pth.Keyword, pth.Tag, lnk.URL)
-							http.Redirect(w, r, lnk.URL, 307) //TODO if this needs to do a replacement...we need it here.
-							redirect = true
-							if lnk.Dtime == core.BurnTime {
-								core.LogInfo.Printf("Link %d is being burned.\n", lnk.ID)
-								core.DestroyLink(lnk)
-							}
-							return tmpl, model, redirect, err
-						}
-					}
-				}
+				msg = fmt.Sprintf("resolved redirectURL contains no variables and no tag was found: %s\n", url)
+				core.LogDebug.Println(msg)
+				check <- msg
+				model.ErrorMessage = msg
 			}
 		}
 		tmpl, model, err = gohttp.RenderListPage(r)
+
+		if !redirect {
+			err = fmt.Errorf("tag '%s' was not found on this list", request.Path.Tag)
+			model.ErrorMessage = err.Error()
+		}
+
 		return tmpl, model, redirect, err
 
-	case pth.Len() == 3:
+	case request.Path.Len() == 3:
 		// Third use case: keyord/tag/param
 		// We already know the list exists at this keyword.
-		core.LogDebug.Println("path len 3")
-		// tag indicated the link we need to get a URL for.
 		var url string
-		var complete bool
 		for id, tagList := range ll.TagBindings {
+			// This check is a stopgap for the effects of a bug where decoupling
+			// left orphaned tagbindings on a list of links.
+			if _, ok := ll.Links[id]; !ok {
+				core.LogInfo.Printf("orphaned tag %d found on list %s\n", id, ll.Keyword)
+				continue
+			}
 			for _, tag := range tagList {
-				if pth.Tag == tag {
+				if request.Path.Tag == tag {
 					for _, l := range ll.Links {
 						if id == l.ID {
 							// We have a link URL now at that tag on this list.
-							url, complete, err = gohttp.RenderSpecial(r, []string{pth.Params[0]}, l, ll)
+							url, complete, err = gohttp.RenderSpecial([]string{request.Path.Params[0]}, l, ll, check)
+							check <- fmt.Sprintf("URL after special rendering: <code>%s</code>", url)
+
 							if complete {
-								core.LogInfo.Printf("Path '%s/%s' redirect rendered: %s\n", pth.Keyword, pth.Tag, url)
-								l.Clicks++
-								http.Redirect(w, r, url, 307)
-								redirect = true
-								if l.Dtime == core.BurnTime {
-									core.LogInfo.Printf("Link %d is being burned.\n", l.ID)
-									core.DestroyLink(l)
+								// check mode: render check page early
+								if core.GetCheckMode(r) {
+									core.LogDebug.Println("CHECK MODE: returning without redirect")
+								} else {
+									core.LogInfo.Printf("Path '%s/%s' redirect rendered: %s\n", request.Path.Keyword, request.Path.Tag, url)
+									l.Clicks++
+									http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+									redirect = true
+									if l.Dtime == core.BurnTime {
+										core.LogInfo.Printf("Link %d is being burned.\n", l.ID)
+										core.DestroyLink(l)
+									}
 								}
 								return tmpl, model, redirect, err
-							}
-							// if incomplete, I guess we can error out?
+							} // if incomplete, I guess we can error out?
 						}
 					}
 				}
@@ -233,51 +312,116 @@ func handleKeyword(w http.ResponseWriter, r *http.Request) (string, gohttp.Model
 // This is the happy path handler for normal requests coming in.
 func routeHappyHandler(w http.ResponseWriter, r *http.Request) {
 	/*
-		get requests only
-
+		get requests: core use case, humans do this
 		if url path == / : return, render index page
 		if url path has prefix . or suffix / == return, render dotpage/listpage
 		else treat as keyword, sending to keyword handleFunc
+
+		The "check" interface: They send a redirect in with check=true in the url parameters
+	*/
+
+	if r.RequestURI == "/favicon.ico" {
+		// This is requested by so many browsers, we can handle it specifically
+		// here to avoid nonsensical keyword lookups.
+		http.Redirect(w, r, "/static/img/favicon.ico", http.StatusPermanentRedirect)
+		return
+	}
+
+	/*
+		New logic:
+		This function is only responsible for http request handling and response sending.
 	*/
 
 	if r.Method != http.MethodGet {
-		// This is the interface for humans. If you want to post, hit the API.
 		http.Error(w, "GET requests only", http.StatusBadRequest)
 		return
 	}
 
-	p := r.URL.Path
-	inputKeyword := r.URL.Query().Get("keyword")
-	switch {
-	case p == "/" && inputKeyword == "":
-		core.LogDebug.Printf("\tindex page processing on path: %s\n", p)
+	request, reqerr := core.MakeNewGoRequest(r)
+	if reqerr != nil {
 		gohttp.IndexPage(w, r)
-	case core.EditMode(strings.TrimPrefix(p, "/")):
-		core.LogDebug.Printf("\tDotpage rendering for path: %s\n", p)
-		tmpl, model, err := gohttp.RenderDotPage(r)
+		return
+	}
+
+	// If for any reason their request didn't look like a go2 keyword/tag, they get index
+	if r.URL.Path == "/" && !request.Valid {
+		gohttp.IndexPage(w, r)
+		return
+	}
+
+	// edge case: they typed 'check' and nothing else. moondog
+	// if request.Path.Keyword == "" {
+	// 	w.WriteHeader(http.StatusBadRequest)
+	// 	return
+	// }
+
+	// This turns their request around and sends it through the redirector as a checked redirect.
+	if request.WantsCheck {
+		var u string
+		if core.ExternalPort == 0 {
+			u = fmt.Sprintf("http://%s/%s?check=true", core.ExternalAddress, request.StringPath())
+		} else {
+			u = fmt.Sprintf("http://%s:%d/%s?check=true", core.ExternalAddress, core.ExternalPort, request.StringPath())
+		}
+		http.Redirect(w, r, u, http.StatusTemporaryRedirect)
+		return
+	}
+
+	// The check interface
+	// This is done in the main handler so we can follow the same code path
+	// as a typical redirect.
+	checkChan := make(chan string, 40) // buffer of 40 until blocking
+
+	if request.CheckMode {
+		core.LogInfo.Printf("check requested: %s\n", r.RequestURI)
+		// If this was a check, we render the check page and include our model
+		// The "variables" portion of the struct is []string so we can abuse that here
+		// by filling it with whatever we had in our check channel.
+		// call to handleKeyword is synchronous here, channel is buffered to allow it to run/return
+
+		_, model, _, _ := handleKeyword(w, r, checkChan)
+		tmpl := "check.gohtml"
+		model.Title = "Check a redirect"
+		model.ActiveUser = request.User
+		model.RedirectorName = core.RedirectorName
+		close(checkChan)
+		for item := range checkChan {
+			model.Variable = append(model.Variable, item)
+		}
+		gohttp.RenderTemplate(w, tmpl, &model)
+		return
+	}
+
+	// We aren't in check mode.
+	// They have a valid keyword at this point.
+	// if in edit mode, go to edit on the page
+	// Otherwise, normal request
+
+	if request.EditMode {
+		tmpl, model, _ := gohttp.RenderDotPage(r)
 		// user input error (probably, among other things)
 		// TODO on that user error...what's possible here?
+		err := gohttp.RenderTemplate(w, tmpl, &model)
 
-		err = gohttp.RenderTemplate(w, tmpl, &model)
-
-		// template rendering error
 		if err != nil {
 			core.LogError.Println(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
+	} else {
+		// call to handleKeyword is synchronous here, channel is buffered to allow it to run/return
+		tmpl, model, redirect, err := handleKeyword(w, r, checkChan)
 
-	default:
-		// process it as a keyword
-		var redirect bool
-		core.LogDebug.Printf("Default handling hit for path: %s\n", p)
+		if err != nil {
+			model.ErrorMessage = err.Error()
+		}
 
-		tmpl, model, redirect, _ := handleKeyword(w, r)
 		if !redirect {
 			gohttp.RenderTemplate(w, tmpl, &model)
 			return
-		} // otherwise, they've already been redirected via handleKeyword
+		}
 	}
+
 }
 
 // Run the webserver frontend. This is only done when this instance of the redirector
@@ -285,13 +429,17 @@ func routeHappyHandler(w http.ResponseWriter, r *http.Request) {
 func configureWebserver(a string, p int) string {
 	fs := http.FileServer(http.Dir("./static"))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
+	http.HandleFunc("/_suggest_/", gohttp.RouteSuggest)
+	http.HandleFunc("/check/", gohttp.RouteCheck)
+	http.HandleFunc("/api/", api.RouteAPI)
+	http.HandleFunc("/404.html", gohttp.RouteNotFound)
 	http.HandleFunc("/_link_/", gohttp.RouteLink)
 	http.HandleFunc("/_login_", gohttp.RouteLogin)
-	http.HandleFunc("/api/", api.RouteAPI)
 	http.HandleFunc("/_db_", gohttp.RouteGetDB)
-	http.HandleFunc("/404.html", gohttp.RouteNotFound)
-	http.HandleFunc("/", routeHappyHandler) // golden happy path because why not?
-	core.LogInfo.Println(fmt.Sprintf("Server starting with arguments: %s:%d", core.ListenAddress, core.ListenPort))
+	http.HandleFunc("/_strings_/", gohttp.RouteStrings)
+	http.HandleFunc("/_maps_/", gohttp.RouteMaps)
+	http.HandleFunc("/", routeHappyHandler)
+	core.LogInfo.Printf(fmt.Sprintf("Server starting with arguments: %s:%d", core.ListenAddress, core.ListenPort))
 	return fmt.Sprintf("%s:%d", a, p)
 }
 
@@ -313,16 +461,6 @@ func init() {
 	for _, layout := range layouts {
 		gohttp.Templates[filepath.Base(layout)] = template.Must(template.ParseFiles(layout, "templates/base.gohtml"))
 	}
-
-	// handle ctrl+c and sigterm - try to shut down gracefully and dump the db
-	shutdownChan := make(chan os.Signal, 1)
-
-	signal.Notify(shutdownChan, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-shutdownChan
-		core.Shutdown()
-		os.Exit(1)
-	}()
 }
 
 func main() {
@@ -334,12 +472,13 @@ func main() {
 	// TODO: flags for log levels
 	go2Config, e := core.RenderConfig("go2config.json")
 	if e != nil {
-		core.LogError.Fatal("error loading local configuration file")
+		log.Println("error loading local configuration file")
 	}
 	core.ListenAddress = go2Config.LocalListenAddress
 	core.ListenPort = go2Config.LocalListenPort
 	core.ExternalAddress = go2Config.ExternalAddress
 	core.ExternalPort = go2Config.ExternalPort
+	core.ExternalProto = go2Config.ExternalProto
 	core.GodbFileName = go2Config.GodbFilename
 	core.RedirectorName = go2Config.RedirectorName
 	core.PruneInterval = go2Config.PruneInterval
@@ -367,6 +506,17 @@ func main() {
 	}
 	core.ConfigureLogging(debugMode, file)
 
+	// Render the opensearch XML template using config values.
+	gohttp.RenderOpenSearch("templates/opensearch.goxml", "static/xml/opensearch.xml")
+
+	// This directory isn't created in the repo by default because the opensearch.xml file
+	// is generated by a template. The directory is created here at startup if it doesn't already exist.
+	os.MkdirAll("static/xml", 0755)
+	err = gohttp.RenderOpenSearch("templates/opensearch.goxml", "static/xml/opensearch.xml")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	/*
 		This is a simple active-standby failover mechanism.
 		If we see a value in the configuration file for the failover peer,
@@ -389,7 +539,7 @@ func main() {
 		go core.RunFailoverMonitor(updateChan)
 	}
 
-	if core.IsActiveRedirector == false {
+	if !core.IsActiveRedirector {
 		// This is the standby loop.
 		core.LogInfo.Println("We are starting in STANDBY mode")
 		for {
@@ -415,25 +565,49 @@ func main() {
 		}
 	} else {
 		// This is the active execution path.
-		core.LogInfo.Println("We are starting in ACTIVE mode")
+		core.LogDebug.Println("We are starting in ACTIVE mode")
 
 		// load the link database off the disk.
 		core.LogDebug.Printf("Loading link database from file: %s", importPath)
 		fh, err := os.Open(importPath)
 		if err != nil {
-			core.LogError.Println("DB file could not be opened! Run the install script to create one.")
+			fmt.Printf("DB file '%s' could not be opened! Run the install script to create one.\n", core.GodbFileName)
 		}
 		err = core.LinkDataBase.Import(fh)
 		if err != nil {
-			core.LogDebug.Println(err)
+			core.LogError.Fatal(err)
+		}
+
+		// Initialize string and map variable structures
+		if core.LinkDataBase.Variables == nil {
+			core.LinkDataBase.Variables = &core.UserVariables{}
+			core.LogDebug.Println("Variables data structure initialized")
+		}
+		// The upgrade case from a db containing variables but no Uses
+		if core.LinkDataBase.Variables.Uses == nil {
+			core.LinkDataBase.Variables.Uses = make(map[string][]*core.Link)
+		}
+		if core.LinkDataBase.Variables.Strings == nil {
+			core.LinkDataBase.Variables.Strings = make(map[string]string)
+			core.LogDebug.Println("String variables initialized")
+		}
+		if core.LinkDataBase.Variables.Maps == nil {
+			core.LinkDataBase.Variables.Maps = make(map[string]map[string]string)
+			core.LogDebug.Println("Map variables initialized")
+		}
+		// Init LinkZero fields not created in previous revisions of the DB schema
+		// LinkVariables must not be null
+		if core.LinkDataBase.Links[0].LinkVariables == nil {
+			core.LinkDataBase.Links[0].LinkVariables = make(map[string]string)
+			core.LogDebug.Println("LinkZero modified to init LinkVariables")
 		}
 
 		// If the file is found on disk, init metadata with that file.
-		// Metadata is initialized empty before this, so an error is ingnored for now and we default to "empty metadata"
+		// Metadata is initialized empty before this, so an error is ignored for now and we default to "empty metadata"
 		meta, metaerr := core.RedirectorMetadata.Import("go2metadata.json")
 		if metaerr == nil {
 			core.LogDebug.Println("Edit metadata found on disk and loaded: go2metadata.json")
-			core.RedirectorMetadata = &meta
+			core.RedirectorMetadata = meta
 		}
 
 		// When we go active and we have a peer, we will start sending regular updates to
@@ -443,10 +617,26 @@ func main() {
 		}
 		go core.PruneExpiringLinks()
 		go core.CheckpointDB("300s")
+		go core.IndexSearchDB("30s")
+
+		// handle ctrl+c and sigterm - try to shut down gracefully and dump the db
+		shutdownChan := make(chan os.Signal, 1)
+		signal.Notify(shutdownChan, os.Interrupt, syscall.SIGTERM)
+
+		go func() {
+			<-shutdownChan
+			core.Shutdown(core.LinkDataBase)
+			os.Exit(1)
+		}()
+
 		ipPort := configureWebserver(listenAddress, listenPort)
 		err = http.ListenAndServe(ipPort, nil)
+		// most common errors are:
+		// - port already in-use by another process
+		// - insufficient privileges to bind to requested port
 		if err != nil {
-			core.LogError.Fatal(err)
+			log.Print(err.Error())
+			os.Exit(1)
 		}
 	}
 }

@@ -1,0 +1,12 @@
+{{ define "title" }}<title>{{ .Title }}</title>{{ end }}
+<div class="container-fluid">
+    {{ define "content" }}
+        {{ range .Variable }}
+        {{ . }}
+        <br>
+        {{ end }}
+    {{ end }}
+    <br>
+    <br>
+    <br>
+</div>

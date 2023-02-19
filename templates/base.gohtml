@@ -16,8 +16,14 @@
     <link href="/static/css/bootstrap.min.css" rel="stylesheet" media="screen"/>
     <link href="/static/css/redirector.css" rel="stylesheet">
 
+    <link rel="search"
+      type="application/opensearchdescription+xml"
+      title="{{ .RedirectorName }}"
+      href="/static/xml/opensearch.xml">
+
 </head>
 <body>
+
     {{ $thislist := .GetMyList .Keyword }}
     <div class="container-fluid">
 
@@ -32,13 +38,19 @@
     <div class="p-2">
         <a role="button" data-bs-toggle="modal" data-bs-target="#setupModal" style="color:#DB6574;">Setup</a>
     </div>
+    {{ if ne .ActiveUser "" }}
+    <div class="p-2">
+        <a role="button" style="color:#DB6574;" href="/_strings_">Strings</a>
+    </div>
+    <div class="p-2">
+        <a role="button" style="color:#DB6574;" href="/_maps_">Maps</a>
+    </div>
+    {{ end }}
 
     <div class="p-2">
     <form action="/_login_" method="POST">
         {{ if ne .ActiveUser "" }}
         <input type="hidden" name="delete" value="true"/>
-        {{/* {{ .ActiveUser }} <button class="btn btn-link" type="submit">Log Out</button> */}}
-
         <div class="input-group input-group-sm">
         <input type="text" name="loginname" class="form-control" placeholder="{{ .ActiveUser }}" size="15" disabled>
         <div class="input-group-append">
@@ -132,7 +144,7 @@
                 <li>Click the "Add' button.</li>
                 <li>For the Search engine field, choose a descriptive name.</li>
                 <li>Set a keyword of: <strong>{{ .RedirectorName }}</strong></li>
-                <li>For the URL, enter <strong>http://{{ .GetExternalRedirectorAddress }}/?keyword=%s</strong></li>
+                <li>For the URL, enter <strong>{{ .GetExternalRedirectorProto }}://{{ .GetExternalRedirectorAddress }}/?keyword=%s</strong></li>
                 </ul>
             </li>
             </ul>
@@ -148,7 +160,7 @@
     <a href="https://github.com/cwbooth5/go2redirector"><img src="/static/img/GitHub-Mark-Light-32px.png"/>Contribute on GitHub</a>
     </div>
 
-<script src="/static/js/bootstrap.bundle.min.js" integrity="sha384-b5kHyXgcpbZJO/tY9Ul7kGkf1S0CWuKcCD38l8YkeH8z8QjE0GmW1gYU5S9FOnJ0"></script>
+<script src="/static/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
 {{- end }}

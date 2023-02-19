@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/"
+                       xmlns:moz="http://www.mozilla.org/2006/browser/search/">
+  <ShortName>{{ .redirectorName }}</ShortName>
+  <Description>go2redirector search engine</Description>
+  <InputEncoding>UTF-8</InputEncoding>
+  <Image width="16" height="16" type="image/png">{{ .baseURL }}/static/img/favicon.ico</Image>
+  <Url type="text/html" method="get" template="{{ .searchURL }}"/>
+  <Url type="application/x-suggestions+json" method="get" template="{{ .suggestURL }}"/> {{/* firefox */}}
+  <Url type="application/json" rel="suggestions" method="get" template="{{ .suggestURL }}" /> {{/* chrome */}}
+  <Url type="application/opensearchdescription+xml"
+     rel="self"
+     template="{{ .baseURL }}/static/xml/opensearch.xml" />
+  <moz:SearchForm>{{ .baseURL }}/search</moz:SearchForm>
+</OpenSearchDescription>

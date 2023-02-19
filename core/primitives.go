@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 )
@@ -23,19 +24,33 @@ var Never = time.Date(2081, 7, 17, 7, 12, 0, 0, time.UTC)
 // used to indicate links to be 'burned after reading', date set well in the past
 var BurnTime = time.Date(1, 1, 1, 1, 1, 1, 1, time.UTC)
 
-// LinkLog structure for special link usages on all special keywords
-// This grows to the size of len(keywords) in the link database.
-// Each array of strings is a list of most recent to oldest usages of that keyword.
-// This is thrown away when the redirector shuts down.
+/*
+LinkLog structure for special link usages on all special keywords
+This grows to the size of len(keywords) in the link database.
+Each array of strings is a list of most recent to oldest usages of that keyword.
+This is thrown away when the redirector shuts down.
+*/
 var LinkLog = make(map[Keyword][]string)
 
+var RedirectorMetadata = MakeNewMetadata()
+
 var LinkZero = newEmptyLink(LinkDataBase, "127.0.0.1", "This is link zero.", "link zero!")
+
+var SearchKeywordsTrie = MakeNewTrie()
+
+// Keywords with smooshed strings of their interesting string data
+var SearchKeywordsData = make(map[string]string)
 
 // Keyword is a string representing a list name.
 type Keyword string
 
 // custom internal url type
 type InternalURL string
+
+type ExtractionCapture struct {
+	ExampleParam string // useful for testing and usage/doc on the user-visible page
+	Regex        string // defining named capture groups for the above param/pattern
+}
 
 // This is an enum for different list of links redirect behaviors.
 // Named cases get negative integers.
@@ -49,20 +64,20 @@ const (
 	// specific links are going to use their >0 link IDs
 )
 
-// Links are identified by their global LinkID.
-// The URL is a string because it might have substitutions within, not being a valid URL while stored here.
-// Ctime == created, Mtime == modified, Atime == last time clicked/redirected
+/*
+	Links are identified by their global LinkID.
+
+The URL is a string because it might have substitutions within, not being a valid URL while stored here.
+Ctime == created, Mtime == modified, Atime == last time clicked/redirected
+LinkVariables keys are variable named capture groups. Values are an enum which defines their defaults.
+*/
 type Link struct {
-	ID            int // This is the one value users can never change.
-	URL           string
-	Title         string
-	Lists         []Keyword
-	Ctime         time.Time
-	Mtime         time.Time
-	Atime         time.Time
-	Dtime         time.Time
-	LinkVariables map[string]string
-	Clicks        int
+	ID                         int // This is the one value users can never change.
+	URL, Title                 string
+	Lists                      []Keyword
+	Ctime, Mtime, Atime, Dtime time.Time
+	LinkVariables              map[string]string
+	Clicks                     int
 }
 
 // ListOfLinks most notably contains a map of [int]*link referring to all links coupled
@@ -77,12 +92,15 @@ type ListOfLinks struct {
 	Usage       string
 	Logging     bool
 	TagBindings map[int][]string
+	Extractions map[int]ExtractionCapture // int == link ID, ExtractionCapture == param example and regex
 }
 
 type LinkDatabase struct {
 	Lists      map[Keyword]*ListOfLinks
 	Links      map[int]*Link
+	Variables  *UserVariables
 	NextLinkID int
+	m          sync.Mutex
 }
 
 // Gpath holds a Keyword, a Tag, and an array of any Params supplied by the user.
@@ -99,6 +117,11 @@ type Gpath struct {
 
 func (k Keyword) IsSpecial() bool {
 	return strings.HasSuffix(string(k), "/")
+}
+
+// Return a string representation of a Keyword
+func (k Keyword) ToString() string {
+	return string(k)
 }
 
 // How many {variable} blocks are in the URL string?
@@ -151,6 +174,9 @@ func MakeNewKeyword(kwd string) (Keyword, error) {
 	}
 
 	k := Keyword(strings.ToLower(escaped))
+	if k == "" {
+		err = errors.New("created keyword was empty")
+	}
 	return k, err
 }
 
@@ -161,14 +187,15 @@ func MakeNewlink(incomingURL string, title string) (*Link, error) {
 	listMembership := []Keyword{} // no memberships initially, done when adding to lists, array of keywords to prevent cycles
 	createTime := time.Now().UTC()
 	newLink := Link{
-		ID:    0,
-		URL:   SanitizeURL(incomingURL),
-		Title: title,
-		Lists: listMembership,
-		Ctime: createTime,
-		Mtime: createTime,
-		Atime: createTime,
-		Dtime: Never,
+		ID:            0,
+		URL:           SanitizeURL(incomingURL),
+		Title:         title,
+		Lists:         listMembership,
+		Ctime:         createTime,
+		Mtime:         createTime,
+		Atime:         createTime,
+		Dtime:         Never,
+		LinkVariables: make(map[string]string),
 	}
 	return &newLink, err
 }
@@ -184,6 +211,7 @@ func MakeNewList(keyword Keyword) *ListOfLinks {
 		Usage:       "",
 		Logging:     LinkLogNewKeywords,
 		TagBindings: make(map[int][]string),
+		Extractions: make(map[int]ExtractionCapture),
 	}
 }
 
@@ -228,7 +256,7 @@ func (ll *ListOfLinks) GetRedirectURL() string {
 	switch ll.Behavior {
 	case RedirectToFreshest:
 		sort.Sort(ByMtime(temp))
-		return fmt.Sprintf("%s", temp[0].URL)
+		return temp[0].URL
 	case RedirectToTop:
 		// Locate the link with the most clicks
 		// TODO: the sort interface available is on arrays of *listoflinks.
@@ -242,7 +270,7 @@ func (ll *ListOfLinks) GetRedirectURL() string {
 			temp = append(temp, v)
 		}
 		randURL := temp[rand.Intn(len(temp))]
-		return fmt.Sprintf("%s", randURL.URL)
+		return randURL.URL
 	case RedirectToList:
 		return fmt.Sprintf("%s/.%s", ListenURL(), ll.Keyword)
 	default:
@@ -259,7 +287,7 @@ func (ll *ListOfLinks) GetRedirectURL() string {
 // both record and delete recordings of usages of keywords.
 func (ll *ListOfLinks) ModifyLogging(setting bool) {
 	ll.Logging = setting
-	if setting == true {
+	if setting {
 		var a []string
 		LinkLog[ll.Keyword] = a // empty slice initially
 	} else {
@@ -304,7 +332,7 @@ func (ll *ListOfLinks) CheckTag(inputTag string) string {
 			}
 		}
 	}
-	if dupes[inputTag] == true {
+	if dupes[inputTag] {
 		return "Duplicate tag! This could lead to undefined list behavior."
 	} else {
 		return "" // no problems found
@@ -315,6 +343,12 @@ func (ll *ListOfLinks) CheckTag(inputTag string) string {
 // for a given link in this list.
 func (ll *ListOfLinks) GetUsages(linkid int) []string {
 	var usages []string
+
+	// edge case: return [""] if the template asked for the right linkID on the wrong list.
+	if _, ok := ll.Links[linkid]; !ok {
+		return []string{""}
+	}
+
 	l := ll.Links[linkid]
 
 	// first use case: tagbindings are completely empty
@@ -336,14 +370,22 @@ func (ll *ListOfLinks) GetUsages(linkid int) []string {
 			if !l.Special() { // go2 keyword/tag
 				usages = append(usages, fmt.Sprintf("%s %s/%s", RedirectorName, ll.Keyword, tag))
 			} else { //go2 keyword/tag/parameter
-				usages = append(usages, fmt.Sprintf("%s %s/%s/parameter", RedirectorName, ll.Keyword, tag))
+				if ll.Extractions[linkid].ExampleParam != "" {
+					usages = append(usages, fmt.Sprintf("%s %s/%s/%s", RedirectorName, ll.Keyword, tag, ll.Extractions[linkid].ExampleParam))
+				} else {
+					usages = append(usages, fmt.Sprintf("%s %s/%s/parameter", RedirectorName, ll.Keyword, tag))
+				}
 			}
 		}
 	} else {
 		if !l.Special() { // go2 keyword
 			usages = append(usages, fmt.Sprintf("%s %s", RedirectorName, ll.Keyword))
 		} else { // go2 keyword/parameter
-			usages = append(usages, fmt.Sprintf("%s %s/parameter", RedirectorName, ll.Keyword))
+			if ll.Extractions[linkid].ExampleParam != "" {
+				usages = append(usages, fmt.Sprintf("%s %s/%s", RedirectorName, ll.Keyword, ll.Extractions[linkid].ExampleParam))
+			} else {
+				usages = append(usages, fmt.Sprintf("%s %s/parameter", RedirectorName, ll.Keyword))
+			}
 		}
 	}
 	return usages
@@ -360,6 +402,7 @@ func MakeNewLinkDatabase() *LinkDatabase {
 	return &LinkDatabase{
 		Lists:      make(map[Keyword]*ListOfLinks),
 		Links:      make(map[int]*Link),
+		Variables:  &UserVariables{},
 		NextLinkID: 1,
 	}
 }
@@ -370,13 +413,14 @@ func (d *LinkDatabase) Import(fh io.Reader) error {
 	var tempdb LinkDatabase
 	var err error
 	data, _ := io.ReadAll(fh)
-
 	err = json.Unmarshal(data, &tempdb)
 	if err != nil {
 		LogError.Printf("json parsing error: %s", err)
 		return err
 	}
 
+	d.m.Lock()
+	defer d.m.Unlock()
 	LinkDataBase = &tempdb
 	return err
 }
@@ -384,7 +428,7 @@ func (d *LinkDatabase) Import(fh io.Reader) error {
 // Export will marshal the current LinkDataBase into JSON and write it to the provided
 // io.Writer.
 func (d *LinkDatabase) Export(fh io.Writer) error {
-	file, err := json.Marshal(*d)
+	file, err := json.Marshal(d)
 	if err != nil {
 		LogError.Println("JSON marshal error:", err)
 		return err
@@ -400,15 +444,20 @@ func (d *LinkDatabase) Export(fh io.Writer) error {
 func newEmptyLink(d *LinkDatabase, incomingURL string, title string, keyword Keyword) *Link {
 	createTime := time.Now().UTC()
 	newLink := Link{
-		ID:    0,
-		URL:   incomingURL,
-		Title: title,
-		Lists: make([]Keyword, 1),
-		Ctime: createTime,
-		Mtime: createTime,
-		Atime: createTime,
-		Dtime: Never,
+		ID:            0,
+		URL:           incomingURL,
+		Title:         title,
+		Lists:         make([]Keyword, 1),
+		Ctime:         createTime,
+		Mtime:         createTime,
+		Atime:         createTime,
+		Dtime:         Never,
+		LinkVariables: make(map[string]string),
 	}
+
+	d.m.Lock()
+	defer d.m.Unlock()
+
 	// create the link in the DB at ID == 0, which is a unique link object.
 	d.Links[0] = &newLink
 	return &newLink
@@ -416,9 +465,14 @@ func newEmptyLink(d *LinkDatabase, incomingURL string, title string, keyword Key
 
 // Decouple a list of links and a specific link.
 // If the removal of a link from the list results in a zero-length list, the list is deleted.
+// When the link is removed, its tagbinding entry is removed as well.
 func (d *LinkDatabase) Decouple(ll *ListOfLinks, linkObj *Link) {
-	LogInfo.Printf("Link ID %d has been decoupled from keyword '%s'\n", linkObj.ID, ll.Keyword)
+
 	delete(ll.Links, linkObj.ID)
+	LogInfo.Printf("Link ID %d has been decoupled from keyword '%s'\n", linkObj.ID, ll.Keyword)
+
+	d.m.Lock()
+	defer d.m.Unlock()
 
 	// If the length of the list now is zero, the list should be removed entirely.
 	if len(ll.Links) == 0 {
@@ -426,6 +480,15 @@ func (d *LinkDatabase) Decouple(ll *ListOfLinks, linkObj *Link) {
 		// remove the usage log for this keyword
 		//delete(LinkLog, ll.Keyword)  TODO, turn this back on
 	}
+
+	// Fix effects of a previous bug: decouple wasn't removing tagbindings
+	// run through all current members of the list and replace the TagBindings
+	// with an updated map with the decoupled link ID absent.
+	newBindings := make(map[int][]string)
+	for link := range ll.Links {
+		newBindings[link] = ll.TagBindings[link]
+	}
+	ll.TagBindings = newBindings
 
 	// Remove the list's keyword from the link's memberships.
 	updatedMemberships := []Keyword{}
@@ -448,8 +511,10 @@ func (d *LinkDatabase) Decouple(ll *ListOfLinks, linkObj *Link) {
 // Couple a an existing link's pointer to a list of links. The list can be existing or will be committed here if new.
 // When you combine a list and a link, the list gets this link included and the link gets its memberships updated.
 func (d *LinkDatabase) Couple(ll *ListOfLinks, linkObj *Link) {
-	LogInfo.Printf("Link ID %d has been coupled with keyword '%s'\n", linkObj.ID, ll.Keyword)
 	linkObj.Mtime = time.Now().UTC()
+
+	d.m.Lock()
+	defer d.m.Unlock()
 
 	if _, exists := d.Lists[ll.Keyword]; !exists {
 		d.Lists[ll.Keyword] = ll // create the list of links
@@ -472,6 +537,7 @@ func (d *LinkDatabase) Couple(ll *ListOfLinks, linkObj *Link) {
 		linkObj.Lists = append(linkObj.Lists, ll.Keyword)
 	}
 	ll.Links[linkObj.ID] = linkObj
+	LogInfo.Printf("Link ID %d has been coupled with keyword '%s'\n", linkObj.ID, ll.Keyword)
 }
 
 // CommitNewLink adds a Link object to the database.
@@ -479,13 +545,17 @@ func (d *LinkDatabase) Couple(ll *ListOfLinks, linkObj *Link) {
 func (d *LinkDatabase) CommitNewLink(l *Link) (int, error) {
 	var err error
 	var id int
+
+	d.m.Lock()
+	defer d.m.Unlock()
+
 	if l.ID == 0 {
 		id = d.NextLinkID
 		l.ID = id
 		d.Links[id] = l
 		d.NextLinkID++
 	} else {
-		msg := "The link being added was not ID=0/new!"
+		msg := "the link being added was not ID=0/new"
 		LogError.Println(msg)
 		err = errors.New(msg)
 		id = l.ID
@@ -496,6 +566,9 @@ func (d *LinkDatabase) CommitNewLink(l *Link) (int, error) {
 
 // Get a link object by ID or URL.
 func (d *LinkDatabase) GetLink(id int, url string) *Link {
+	d.m.Lock()
+	defer d.m.Unlock()
+
 	for _, lnk := range d.Links {
 		if lnk.ID == id || lnk.URL == url {
 			return lnk
@@ -509,6 +582,10 @@ func (d *LinkDatabase) GetLink(id int, url string) *Link {
 // Sort by access time (Atime)
 func (d *LinkDatabase) LinksByAtime(count int) []*Link {
 	linkPile := []*Link{}
+
+	d.m.Lock()
+	defer d.m.Unlock()
+
 	for _, link := range d.Links {
 		linkPile = append(linkPile, link)
 	}
@@ -523,6 +600,10 @@ func (d *LinkDatabase) LinksByAtime(count int) []*Link {
 // Sort by modification time (Mtime)
 func (d *LinkDatabase) LinksByMtime(count int) []*Link {
 	linkPile := []*Link{}
+
+	d.m.Lock()
+	defer d.m.Unlock()
+
 	for _, link := range d.Links {
 		linkPile = append(linkPile, link)
 	}
@@ -536,6 +617,10 @@ func (d *LinkDatabase) LinksByMtime(count int) []*Link {
 
 func (d *LinkDatabase) LinksByClicks(count int) []*Link {
 	linkPile := []*Link{}
+
+	d.m.Lock()
+	defer d.m.Unlock()
+
 	for _, link := range d.Links {
 		linkPile = append(linkPile, link)
 	}
@@ -552,6 +637,10 @@ func (d *LinkDatabase) LinksByClicks(count int) []*Link {
 // Use -1 to return all lists in the linkDB, sorted by click count.
 func (d *LinkDatabase) TopLists(count int) []*ListOfLinks {
 	listPile := []*ListOfLinks{}
+
+	d.m.Lock()
+	defer d.m.Unlock()
+
 	for _, list := range d.Lists {
 		listPile = append(listPile, list)
 	}
@@ -562,4 +651,78 @@ func (d *LinkDatabase) TopLists(count int) []*ListOfLinks {
 	return listPile[:count]
 }
 
-var RedirectorMetadata = MakeNewMetadata()
+/*
+Search-related structures and functions
+*/
+
+/*
+trie prefix tree for word searches
+We can hold this in memory for easy searching through sets of data in the redirector DB.
+
+This should be run over parts of the entire DB at regular intervals.
+*/
+
+// lower case letters and digits
+const (
+	TRIE_SIZE = 255
+)
+
+type TrieNode struct {
+	children  [TRIE_SIZE]*TrieNode
+	endOfWord bool
+}
+
+type Trie struct {
+	root *TrieNode
+}
+
+// Insert a word into the trie, returning an error if the index exceeds the TRIE_SIZE
+func (t *Trie) Insert(word string) error {
+	var err error
+	current := t.root
+	for i := 0; i < len(word); i++ {
+		index := word[i] - 'a'
+		if index > TRIE_SIZE {
+			return fmt.Errorf("indexing failed: Word: %s, index size: %d", word, index)
+		}
+		if current.children[index] == nil {
+			current.children[index] = &TrieNode{}
+		}
+		current = current.children[index]
+	}
+	current.endOfWord = true
+	return err
+}
+
+// Search the trie for a full word. To use prefix matching, use StartsWith.
+func (t *Trie) Search(word string) bool {
+	current := t.root
+	for i := 0; i < len(word); i++ {
+		index := word[i] - 'a'
+		if current.children[index] == nil {
+			return false
+		}
+		current = current.children[index]
+	}
+	return current.endOfWord
+}
+
+// StartsWith is a prefix match of any length input
+func (t *Trie) Startswith(word string) bool {
+	current := t.root
+	for i := 0; i < len(word); i++ {
+		index := word[i] - 'a'
+		if current.children[index] == nil {
+			return false
+		}
+		current = current.children[index]
+	}
+	return true
+}
+
+// Allocate and return a new trie structure
+func MakeNewTrie() *Trie {
+	return &Trie{
+		root: &TrieNode{},
+	}
+}
