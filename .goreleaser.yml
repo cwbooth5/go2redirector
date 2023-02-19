@@ -41,5 +41,5 @@ dockers:
     - core/
     - static/
     - templates/
+    - tools/
     - README.md
-    - convert.py

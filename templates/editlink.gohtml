@@ -7,41 +7,51 @@ window.addEventListener('load', function() {
 })
 </script>
 
-<!-- This code is intended to make it setting variables clearer. -->
 <script>
-  function addinputs() {
-    var x = document.getElementById("urlinput").value;
+  function getlink() {
+    {{/*idx 0 is external proto, idx 1 is external address, idx 2 is external port (if defined)*/}}
+    {{ $externalPortDefined := index .Variable 2 }}
+    return fetch('{{ index .Variable 0 }}://{{ index .Variable 1 }}{{ if ne $externalPortDefined "0" }}:{{ index .Variable 2 }}{{ end }}/api/link/?linkid={{ .LinkBeingEdited.ID }}')
+      .then(data => {
+      return data.json();
+      })
+  }
+  async function addinputs() {
+    var x = document.getElementById("paramregexinput").value;
     var container = document.getElementById("rowvar");
-    var regex = /\{([\d\w]+)\}+/g;  // matches {variable}, can work with alphanumeric
+    var regex = /\?P\<([\w+]+)\>/g;
     let matches = x.matchAll(regex);
-    document.getElementById("rowvar").innerHTML = "";  // remove all inputs
-    // This is an iterator, not an array
-    for(let result of matches) {
+    container.innerHTML = "";  // remove all inputs
+    var data = await getlink();
 
+    // This is an iterator, not an array
+    // result[1] is the matched string
+    for(let result of matches) {
       var varsfound = result;
 
       if (document.getElementById(result[1])) {
         continue
       }
-      code = document.createElement("code");
+      let tr = document.createElement("tr");
+      let row = container.appendChild(tr);
+      row.innerHTML = `
+      <div><code>${result[1]}</code></div>
+      <div class="btn-group-sm" role="group" aria-label="defaults toggle group">
+  <input type="radio" class="btn-check" name="${"urlvar~" + result[1]}" id="${"radio1-" + result[1]}" value="input" autocomplete="off" required>
+  <label class="btn btn-outline-secondary" for="${"radio1-" + result[1]}">input</label>
 
-      var description = document.createTextNode(result[0]);
-      var input = document.createElement("input");
-      input.type = "text";
-      input.name = "urlvar~" + result[1]; //note our non-typical delimiter
-      //input.name = "urlvar";
-      input.id = result[1]; // name without braces
-      //input.required = true;
-      input.className = "form-control";
+  <input type="radio" class="btn-check" name="${"urlvar~" + result[1]}" id="${"radio2-" + result[1]}" value="error" autocomplete="off">
+  <label class="btn btn-outline-secondary" for="${"radio2-" + result[1]}">error</label>
 
-      {{ if .LinkExists }}
-      // TODO: put code here which poplulates these fields with the defaults set previously in the db
-      {{ end }}
+  <input type="radio" class="btn-check" name="${"urlvar~" + result[1]}" id="${"radio3-" + result[1]}" value="none" autocomplete="off">
+  <label class="btn btn-outline-secondary" for="${"radio3-" + result[1]}">none</label>
+</div>`;
 
-      container.appendChild(code)
-      code.appendChild(description);
-      container.appendChild(input);
-      container.appendChild(document.createElement("br"));
+      for (let i = 1; i < 4; i++) {
+        let checkbox = document.getElementById("radio" + i + "-" + result[1])
+        checkbox.checked = (checkbox.value == data.LinkVariables[result[1]] ? true : false)
+      }
+
     }
 
     if (!varsfound) {
@@ -50,22 +60,12 @@ window.addEventListener('load', function() {
   }
 </script>
 
-
 {{ $linkid := .LinkBeingEdited.ID }}
 {{ $isspecial := .IsSpecial }}
+{{ $numvars := len .LinkBeingEdited.LinkVariables }}
 
 <script type="text/javascript" src="/static/js/jquery.min.js"></script>
 <script type="text/javascript" src='/static/js/go.js'> </script>
-
-<script>
-  function confirmDelete() {
-    return confirm("Do you really want to delete this?")
-    // if(!confirm("Do you really want to delete this?")) {
-    // return false;
-    // }
-    // this.form.submit();
-  }
-</script>
 
 <div class="row">
   <div class="col-sm-6" style="margin-bottom: 10px;">
@@ -114,80 +114,58 @@ window.addEventListener('load', function() {
                 <input type="text" name="tag" class="form-control" value="" placeholder=""/>
               {{ end }}
               <small class="form-text text-muted">
-                 Multiple tags can be supplied, separated with spaces.
+                 (optional) Multiple tags can be supplied, separated with spaces.
                 </small>
               </td>
             </tr>
-
-            {{/* <tr>
-              <td>Usage Example</td>
-              <td>
-
-                <div class="input-group input-group-sm">
-                  {{ if $isspecial }}
-                  <div class="input-group-prepend">
-
-                    <!-- TODO: This index is janky. Why don't we have access to just the keyword for special links? -->
-                    <!-- New specials will have the keyword available from the URL param "returnto". Existing lists will have one link and we just get that first one. -->
-                      <span class="input-group-text font-weight-bold" id="inputGroup-sizing-sm">{{ .RedirectorName }}/{{ if ne .Keyword "" }}{{ .Keyword }}{{ else }}{{ index .LinkBeingEdited.Lists 0 }}{{ end }}</span>
-                  </div>
-                  <input type="text" class="form-control concat-usage" disabled>
-                  <!-- <input type="text" name="usage" class="form-control" aria-label="Small" aria-describedby="inputGroup-sizing-sm" value="{{ .GetUsage }}"> -->
-                  {{ else }}
-                  <!-- <input type="text" class="form-control" aria-label="Small" aria-describedby="inputGroup-sizing-sm"> -->
-                  <input class="form-control" type="text" placeholder="{{ .RedirectorName }}/{{ if ne .Keyword "" }}{{ .Keyword }}{{ else }}{{ index .LinkBeingEdited.Lists 0 }}{{ end }}" readonly>
-                  {{ end }}
-                </div>
-
-              </td>
-            </tr> */}}
 
             <tr>
-              <td>URL</td>
+              <td>Example Parameter</td>
               <td>
-
-                <textarea id="urlinput" name="url" rows="4" cols="50" placeholder="www.example.com" class="form-control" aria-describedby="urlHelpBlock" required>{{ if ne $linkid 0 }}{{ .LinkBeingEdited.URL }}{{ end }}</textarea>
-                <small id="urlHelpBlock" class="form-text text-muted">
-                  Add {1} into the URL here to substitute the first input parameter.
+                <input type="text" id="paraminput" name="paraminput" class="form-control" value="{{ $.GetExtraction.ExampleParam }}" placeholder=""/>
+                <small class="form-text text-muted">
+                  This is an example input parameter users will enter. Use this to test the extraction regex.
                 </small>
               </td>
             </tr>
 
-            {{ if false }}
+            <tr>
+            <td>Extraction Regex</td>
+            <td>
+              <input type="text" id="paramregexinput" name="paramregexinput" class="form-control" value="{{ $.GetExtraction.Regex }}" placeholder="" oninput="addinputs()"/>
+              <small class="form-text text-muted">
+                Define a regex using named capture groups to pull data out of the user's input parameter.
+              </small>
+            </td>
+            </tr>
+
             <tr id="urlvars">
-              <td>Default Variables</td>
+              <td>Named Capture Fallback</td>
               <td>
                 <div id="rowvar"><p>(no variables used)</p></div>
-                {{ $numvars := len .LinkBeingEdited.LinkVariables }}
+
                 {{/* only show the helper text containing defaults if link variables are set currently on this link */}}
                 {{ if gt $numvars 0 }}
                   <small id="urlHelpBlock" class="form-text text-muted">current defaults -
                   {{ range $pattern, $replacement := .LinkBeingEdited.LinkVariables }}
-                  { {{- $pattern -}} }:{{ $replacement}}
+                  {{$pattern}}:{{ $replacement}}
                   {{- end }}
                   </small>
                 {{- end }}
 
               </td>
             </tr>
-            {{ end }}
 
-
-            {{ if $isspecial }}
             <tr>
+              <td>URL</td>
               <td>
-                Keyword Usage Logging
-              </td>
-              <td>
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" id="linklog" name="linklog" value="enable" {{ if .GetLogging .Keyword }} checked {{ end }}>
-                  <label class="form-check-label" for="linklog">
-                    Enable
-                  </label>
-                </div>
+                <textarea id="urlinput" name="url" rows="4" cols="50" placeholder="www.example.com" class="form-control" aria-describedby="urlHelpBlock" required>{{ if ne $linkid 0 }}{{ .LinkBeingEdited.URL }}{{ end }}</textarea>
+                <small id="urlHelpBlock" class="form-text text-muted">
+                  Use {string} to place a capture group into the URL. Use {$string} for string variables. Use {$map[string]} for map lookups.
+                </small>
               </td>
             </tr>
-            {{ end }}
+
             <tr>
               <td>Link Expiration</td>
               {{ if not .LinkExists }}
@@ -258,22 +236,45 @@ window.addEventListener('load', function() {
   {{ $thelink := .LinkBeingEdited}}
   <div class="col-sm-6" style="margin-bottom: 10px;">
     <div class="card">
-      <div class="card-header"><h4>Redirect Variables</h4></div>
+      <div class="card-header"><h4>Redirect Configuration and Behavior</h4></div>
       <div class="card-body">
-        <p>URLs can have a single positional <code>{variable}</code> within, which is the last field a user types in a redirect. The only supported value right now is <code>{1}</code>.</p>
+        <p>Usages of this redirect vary based on the number of tags it has.</p>
         <p>The possible redirects to this link: <br>
         {{/* The check for the list here prevents crashes due to garbage returnto= fields input by the user */}}
         {{ $thislist := .GetMyList .Keyword }}
+       
         {{ $isNotLinkZero := ne .LinkBeingEdited.ID 0 }}
         {{ if and $isNotLinkZero $thislist }}
           {{ $usages := $thislist.GetUsages .LinkBeingEdited.ID }}
             {{ range $usage := $usages }}
             <code>{{ $usage }}</code><br>
             {{ end }}
-          {{ if $special }}
-          <p>...where "parameter" is any string which makes sense to subsititute into this URL for <code>{1}</code>.</p>
-          {{ end }}
         {{ end }}
+
+        {{/* help text for complex configurations */}}
+        <div>
+          {{ if ne $numvars 0 }}
+          <p>
+          There {{ if ne $numvars 1 }}are{{ else }}is{{ end }} {{ $numvars }} named capture{{ if ne $numvars 1 }}s{{ end }} for this redirect. This means the user's input
+          parameter will have {{ $numvars }} named variable{{ if ne $numvars 1 }}s{{ end }} extracted.
+          </p>
+          {{ range $name, $value  := .LinkBeingEdited.LinkVariables }}
+          <p>
+          Link variable <code>{{ $name }}</code> has a default of <b>{{ $value }}</b>.
+          {{ if eq $value "input" }}
+          This means if the lookup fails, the exact captured input is used in the URL.
+          {{ else if eq $value "error" }}
+          This means if the lookup fails, an error is raised to the user attempting to redirect.
+          {{ else if eq $value "none" }}
+          This means if the lookup fails, the user does not get redirected and lands on this page.
+          {{ end }}
+          </p>
+            <br>
+          {{ end }} {{/* end of range */}}
+          {{ end }} {{/* end of ne 0 check */}}
+        </div>
+
+
 
         <div class="inner">
           <form action="/_variables_/" method="POST">
@@ -281,38 +282,6 @@ window.addEventListener('load', function() {
             <input type="hidden" name="returnto" value="{{ .Keyword }}"/>
             {{ if .LinkExists }}
             <input type="hidden" name="linkid" value="{{ $linkid }}"/>
-            {{ end }}
-
-            {{/* I want to keep this block of code around just in case we need to flip on overrides for some reason */}}
-            {{ if false }}
-            <table class="table">
-              <tr>
-                <td>
-                  <h3>Override Variables</h3>
-                  {{ $numlinkvars := len .LinkBeingEdited.LinkVariables }}
-                  {{ if gt $numlinkvars 0 }}
-                  {{ range $pattern, $replacement := .LinkBeingEdited.LinkVariables }}
-                  <div class="form-group row">
-                    <label for="replacement" class="col-sm-2 col-form-label font-weight-bold text-nowrap"><code>{ {{- $pattern -}} }</code></label>
-                    <input type="hidden" class="form-control" name="pattern" value="{{ $pattern }}">
-                    <div class="col-sm-10">
-                    {{ $useroverride := index $.Overrides $pattern }}
-                    {{/* Show the user's cookie override value. If it isn't there, show the default. */}}
-                      <input type="text" class="form-control" name="replacement" id="replacement" value="{{ or $useroverride $replacement }}" placeholder="{{ or $useroverride $replacement }}">
-                    </div>
-                  </div>
-                  {{ end }}
-                  <div class="form-group row">
-                    <div class="col-sm-10 offset-sm-2">
-                      <button type="submit" class="btn btn-primary">Add Local Overrides</button>
-                    </div>
-                  </div>
-                  {{ else }}
-                  <p class="lead">No Overrides are set yet because this link contains no variables.</p>
-                  {{ end }}
-                </td>
-              </tr>
-            </table>
             {{ end }}
 
             {{ $loggedin := ne .ActiveUser "" }}

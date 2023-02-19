@@ -2,7 +2,7 @@ package core
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"time"
 )
 
@@ -35,17 +35,24 @@ type Metadata struct {
 // This is called to initialize the in-memory metadata for all lists and links.
 func MakeNewMetadata() *Metadata {
 	// go through all lists and links, creating their corresponding metadata with empty values.
-	var m *Metadata
-	m = new(Metadata)
+	// var m *Metadata
+	m := new(Metadata)
 	m.ListEdits = make(map[Keyword][]*EditRecord)
 	m.LinkEdits = make(map[int][]*EditRecord)
 	return m
 }
 
-func (m *Metadata) Import(f string) (Metadata, error) {
-	var tempdata Metadata
+/*
+Import reads the given file off the disk, then unmarshalls the JSON
+into a Metadata struct and returns it along with err.
+
+The copied mutex lock value here is not an issue because this is done
+once on startup.
+*/
+func (m *Metadata) Import(f string) (*Metadata, error) {
+	var tempdata *Metadata
 	var err error
-	data, err := ioutil.ReadFile(f)
+	data, err := os.ReadFile(f)
 	if err != nil {
 		LogError.Printf("No edit metadata file '%s' was found\n", f)
 		return tempdata, err
@@ -60,12 +67,12 @@ func (m *Metadata) Import(f string) (Metadata, error) {
 }
 
 func (m *Metadata) Export(f string) error {
-	file, err := json.Marshal(*m)
+	file, err := json.Marshal(m)
 	if err != nil {
 		LogError.Println("JSON marshal error:", err)
 		return err
 	}
-	err = ioutil.WriteFile(f, file, 0644)
+	err = os.WriteFile(f, file, 0644)
 	if err != nil {
 		LogError.Fatal(err)
 	}

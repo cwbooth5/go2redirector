@@ -4,11 +4,15 @@
   "local_listen_port": 8080,
   "external_address": "localhost",
   "external_port": 8080,
+  "external_proto": "http",
   "godb_filename": "godb.json",
   "redirector_name": "go2",
-  "prune_interval": "30s",
+  "prune_interval": "1m",
   "new_list_behavior": "rFreshest",
   "levenshtein_distance_ratio": 0.6,
   "link_log_new_keywords": true,
-  "link_log_capacity": 10
+  "link_log_capacity": 10,
+  "log_file": "redirector.log",
+  "failover_peer": "",
+  "failover_local": ""
 }

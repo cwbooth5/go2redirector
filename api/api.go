@@ -3,7 +3,9 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -22,7 +24,13 @@ type apiLink struct {
 	Lists      []string     `json:"lists"`
 }
 
-// RouteAPI is the API handler used primarily to modify lists and links.
+/*
+RouteAPI is the API handler used primarily to modify lists and links.
+
+This is a single route that matches all the different request URLs. It's not
+incredibly sophisticated, but it gets the job done.
+*/
+
 func RouteAPI(w http.ResponseWriter, r *http.Request) {
 	/*
 		/api/link - GET, POST
@@ -33,18 +41,17 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 		needing a special response - like a redirect to a page as opposed to JSON and a 202.
 		It will be a Form element key of "internal" with any non-null value.
 	*/
-	// core.LogDebug.Printf("API request URL: %s\n", r.URL.Path)
-	// requestDump, err := httputil.DumpRequest(r, true)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// }
-	// fmt.Println(string(requestDump))
 	var err error
 
+	// CORS header since browsers will check this for cross-origin accesses
+	if _, exists := w.Header()["Access-Control-Allow-Origin"]; !exists {
+		core.LogDebug.Println("API called, adding CORS header")
+		w.Header().Add("Access-Control-Allow-Origin", "*")
+	}
 	// Classification of API paths
 
 	// link
-	if r.URL.RequestURI() == "/api/link/" {
+	if strings.HasPrefix(r.URL.RequestURI(), "/api/link") {
 		var internal bool // Is this going to get a page returned(internal == true) or a JSON response?
 		var inboundLink *core.Link
 		now := time.Now()
@@ -78,7 +85,6 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 					core.LogError.Println(msg)
 					http.Error(w, msg, http.StatusBadRequest)
 				}
-
 				outboundLink.Expiretime = delta
 				// New links being created have an expire date set.
 				// Existing links cannot have this value edited, so it only exists here.
@@ -87,7 +93,6 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 					// special case: burn after reading
 					// We set the date to time.Time nil value to encode this.
 					// Link pruning code should not remove this special case, even though it's well in the past.
-
 					exptime = core.BurnTime
 					core.LogDebug.Printf("burn time of %s set on link\n", exptime)
 				} else {
@@ -124,13 +129,13 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 				deleteEdit := core.EditRecord{EditDate: now, EditUser: core.ExtractUser(r), EditMsg: fmt.Sprintf("link decoupled: %s", inboundLink.URL)}
 				core.RedirectorMetadata.ListEdits[ll.Keyword] = core.PrependEdit(core.RedirectorMetadata.ListEdits[ll.Keyword], &deleteEdit)
 
+				core.LogInfo.Printf("user %s deleted link ID %d\n", deleteEdit.EditUser, inboundLink.ID)
 				if internal {
 					// The template called this, so 302 to the dotpage for this keyword.
-					http.Redirect(w, r, fmt.Sprintf("/.%s", outboundLink.Keyword), 302)
+					http.Redirect(w, r, fmt.Sprintf("/.%s", outboundLink.Keyword), http.StatusFound)
 					return
 				}
 				// this isn't rendering a template, just an http response
-				// 410/Gone
 				w.WriteHeader(http.StatusGone)
 				return
 			}
@@ -149,12 +154,13 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 				lid, _ := core.LinkDataBase.CommitNewLink(inboundLink)
 				// inbound link has its new linkid now.
 				outboundLink.ID = lid
-				core.LogInfo.Printf("New link with ID %d was added to the DB.\n", lid)
 				ll.TagBindings[lid] = allTags
 				newLinkEdit = core.EditRecord{EditDate: now, EditUser: core.ExtractUser(r), EditMsg: fmt.Sprintf("link created: %s", inboundLink.URL)}
+				core.LogInfo.Printf("New link with ID %d was added to the DB by user %s.\n", lid, newLinkEdit.EditUser)
 			} else {
 				ll.TagBindings[id] = allTags
 				newLinkEdit = core.EditRecord{EditDate: now, EditUser: core.ExtractUser(r), EditMsg: fmt.Sprintf("link modified: %s", inboundLink.URL)}
+				core.LogInfo.Printf("Existing link with ID %d was modified by user %s.\n", id, newLinkEdit.EditUser)
 			}
 			// link edit metadata
 			core.RedirectorMetadata.LinkEdits[outboundLink.ID] = core.PrependEdit(core.RedirectorMetadata.LinkEdits[outboundLink.ID], &newLinkEdit)
@@ -185,15 +191,39 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 				core.LogDebug.Printf("Coupling link to otherlist '%s'", kwd)
 			}
 
-			// link variables
-			formVariableValues := make(map[string]string)
+			/*
+				link variables
+				Users can name capture groups in a regex and map the captured strings to an internal variable lookup.
+
+				This no longer supports user-local variables. This is being repurposed.
+			*/
+			formVariableValues := make(map[string]string) // making a new one forces a refresh of this data on the link
 			for k := range r.Form {
 				if strings.HasPrefix(k, "urlvar~") {
 					name := strings.TrimPrefix(k, "urlvar~")
+					// "name" is whatever they named the capture group. "k" is their input form value, which is the default action.
+					// TODO: we need to check user input here
 					formVariableValues[name] = r.FormValue(k)
 				}
 			}
+
+			// list of links now needs the param/regex
+			// Users are providing a regex here, validate it.
+			inputRegex := r.FormValue("paramregexinput")
+			_, err := regexp.Compile(inputRegex)
+			if err != nil {
+				// give both debug log and user feedback on the failed input
+				core.LogError.Printf("regex compilation of '%s' failed! %s", inputRegex, err)
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			// only change these if validation passed
 			inboundLink.LinkVariables = formVariableValues // They're all overwritten. Users can always change these defaults.
+			// Initialize extractions struct to cover pre-extractions-feature lists of links
+			if ll.Extractions == nil {
+				ll.Extractions = make(map[int]core.ExtractionCapture)
+			}
+			ll.Extractions[inboundLink.ID] = core.ExtractionCapture{ExampleParam: r.FormValue("paraminput"), Regex: inputRegex}
 
 			core.LinkDataBase.Couple(ll, inboundLink)
 
@@ -203,7 +233,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 
 			if internal {
 				// The template called this, so 302 to the dotpage for this keyword.
-				http.Redirect(w, r, fmt.Sprintf("/.%s", outboundLink.Keyword), 302)
+				http.Redirect(w, r, fmt.Sprintf("/.%s", outboundLink.Keyword), http.StatusFound)
 				return
 			}
 			// this isn't rendering a template, just an http response
@@ -213,8 +243,25 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(outboundLink)
 		case "GET":
 			// 200 OK or 404
-			core.LogDebug.Println("this is a GET..")
+			// This is here for the js requesting already-set link variables so it can populate input.value fields.
+			core.LogDebug.Println("this is a GET to the link API")
 
+			// incoming request will contain linkid
+			linkid, err := strconv.Atoi(r.URL.Query().Get("linkid"))
+			core.LogDebug.Printf("Incoming link id: %d\n", linkid)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			data, err := json.Marshal(core.LinkDataBase.Links[linkid])
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write(data)
 		}
 
 	} else if r.URL.RequestURI() == "/api/behavior/" {
@@ -241,7 +288,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 
 			previousBehavior := core.LinkDataBase.Lists[kw].Behavior
 			core.LinkDataBase.Lists[kw].Behavior = requestedBehavior
-			core.LogDebug.Printf("Behavior on keyword '%s' changed to %d\n", kw, requestedBehavior)
+			core.LogInfo.Printf("Behavior on keyword '%s' changed to %d by user %s\n", kw, requestedBehavior, core.ExtractUser(r))
 
 			if previousBehavior != requestedBehavior { // handle the case where they just clicked the button with no changes
 				// edit metadata on the list
@@ -260,7 +307,6 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusNotImplemented)
 		}
-
 	} else if r.URL.RequestURI() == "/api/keywords" {
 		// Keywords API, used initially just to get the data for the search box. proof-of-concept
 		switch r.Method {
@@ -268,7 +314,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			core.LogDebug.Printf("post to keyword API, TODO")
 		case "GET":
 			w.Header().Set("Content-Type", "application/json")
-			w.Header().Set("Cache-Control", "max-age=60")
+			w.Header().Set("Cache-Control", "max-age=60") // cache locally to speed things up
 			w.WriteHeader(http.StatusFound)
 
 			data, err := json.Marshal(core.LinkDataBase.Lists)
@@ -276,7 +322,181 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			//core.LogDebug.Println("/api/keywords route hit")
+			w.Write(data)
+		}
+	} else if strings.HasPrefix(r.URL.RequestURI(), "/api/variables/strings") {
+		/*
+			strings api
+			This one is much simpler than maps.
+			**namespaces are included for forward-compatibility when those are added
+			"/api/variables/strings/{stringname}"
+			GET: Get a string back as JSON by name
+			DELETE: Delete a string by name
+			POST: create new string, name and value fields required, namespace global by default
+			{
+				name: "mystring",
+				value: "myvalue",
+				namespace: "global"
+			}
+		*/
+		var strName string
+		type stringsPayload struct {
+			Namespace, Name, Value string
+		}
+		split := strings.Split(r.RequestURI, "/")
+		if len(split) < 5 {
+			http.Error(w, "ERROR: string name required in URL", http.StatusBadRequest)
+			return
+		}
+		strName = strings.Trim(split[4], "\r\n")
+
+		switch r.Method {
+		case "DELETE":
+			// The delete operation is on the entire string/value variable.
+			if len(split) == 5 {
+				core.LogInfo.Printf("String %s is being deleted by user %s\n", strName, core.ExtractUser(r))
+				delete(core.LinkDataBase.Variables.Strings, strName)
+			}
+
+			data, err := json.Marshal("deleted")
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(data)
+		case "POST":
+			// creation, updates
+			pl := stringsPayload{}
+			body, err := io.ReadAll(r.Body)
+			if err != nil { // problem reading request body
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			err = json.Unmarshal(body, &pl)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			// input sanitization
+			pl.Name = strings.Trim(pl.Name, "\r\n")
+			pl.Value = strings.Trim(pl.Value, "\r\n")
+			core.CreateStringVar(pl.Name, pl.Value)
+			core.LogInfo.Printf("String %s is being created by user %s\n", pl.Name, core.ExtractUser(r))
+
+			// bullshit reply for testing, TODO change this to something sensible
+			data, err := json.Marshal(core.LinkDataBase.Variables.Maps[strName])
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(data)
+		}
+	} else if strings.HasPrefix(r.URL.RequestURI(), "/api/variables/maps") {
+		/*
+			**namespaces are included for forward-compatibility when those are added
+			"/api/variables/maps/{mapname}"
+			GET: Get a map back as JSON by name
+			DELETE: Delete a map by name
+			POST: create new map, values field is mandatory, array can be empty, namespace global by default
+			{
+				values: "phx:phoenix-32\niad:virginia-12",
+				namespace: "global"
+			}
+
+			PUT: Update N elements of an existing map
+			every value needs to be included, extra values can be added
+			{
+				values: [
+					phx:phoenix-1234,
+					iad:virginia-99,
+					icn:seoul-88
+				],
+				namespace: global
+			}
+
+			"/api/variables/maps/{mapname}/{key}"
+			GET: Get a value from a map name and key
+			the return from the GET is going to be identical to what you POST
+			POST: Add a key/value to a map
+			{
+				value: "some-value"
+			}
+			DELETE: Delete a key/value entry from a map
+
+		*/
+		type mapsPayload struct {
+			Namespace, Values string
+		}
+		core.LogDebug.Println("maps route hit")
+		split := strings.Split(r.RequestURI, "/")
+		if len(split) < 5 {
+			http.Error(w, "ERROR: map name required in URL", http.StatusBadRequest)
+			return
+		}
+		mapName := split[4]
+
+		switch r.Method {
+		case "DELETE":
+			if len(split) == 5 {
+				core.LogInfo.Printf("Map %s is being deleted by user %s\n", mapName, core.ExtractUser(r))
+				// The first case is they are deleting an entire map by name.
+				delete(core.LinkDataBase.Variables.Maps, mapName)
+			} else if len(split) == 6 {
+				// The second case is they are deleting a specific key:value pair from a map.
+				// These delete requests will have a request body indicating what is being removed.
+				core.LogInfo.Println("key is being deleted from map")
+				keyName := split[len(split)-1]
+				delete(core.LinkDataBase.Variables.Maps[mapName], keyName)
+			}
+			data, err := json.Marshal("deleted")
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(data)
+
+		case "POST":
+			pl := mapsPayload{}
+			body, err := io.ReadAll(r.Body)
+			if err != nil { // problem reading request body
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			err = json.Unmarshal(body, &pl)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			// temporary holding structure for incoming data, just in case errors on input
+			tempInput := make(map[string]string)
+
+			for _, item := range strings.Split(pl.Values, "\n") {
+				// now we have key:value
+				pair := strings.SplitN(item, ":", 2)
+				// key is the first element, value is the second
+				if len(pair) <= 1 { // they didn't provide a separator
+					http.Error(w, "no separator was specified", http.StatusBadRequest)
+					return
+				}
+				// fmt.Printf("map  - %s\n", pair) // TODO: space crashes this
+				tempInput[pair[0]] = pair[1]
+			}
+
+			// This destroys the entire map and creates it new with incoming values.
+			core.LogInfo.Printf("Map %s is being created/modified by user %s\n", mapName, core.ExtractUser(r))
+			core.LinkDataBase.Variables.Maps[mapName] = tempInput
+
+			// bullshit reply for testing
+			data, err := json.Marshal(core.LinkDataBase.Variables.Maps[mapName])
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
 			w.Write(data)
 		}
 	}

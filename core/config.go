@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 )
 
@@ -11,14 +12,15 @@ import (
 
 var GodbFileName string
 
-var ListenAddress string
-var ListenPort int
-var ExternalAddress string
-var ExternalPort int
-var RedirectorName string
-var PruneInterval string
-var NewListBehavior string
-var LevDistRatio float64
+var ListenAddress string   // address redirector process should listen on
+var ListenPort int         // port redirector process should listen on
+var ExternalAddress string // NAT/external address where users interface
+var ExternalPort int       // should be optional
+var ExternalProto string   // http or https
+var RedirectorName string  // defaults to 'go2'
+var PruneInterval string   // number of seconds to wait between link burnings
+var NewListBehavior string // default behavior for new lists
+var LevDistRatio float64   // ratio of lev distance to term length
 var LinkLogNewKeywords bool
 var LinkLogCapacity int
 var LogFile string
@@ -30,6 +32,7 @@ type Config struct {
 	LocalListenPort    int     `json:"local_listen_port"`
 	ExternalAddress    string  `json:"external_address"`
 	ExternalPort       int     `json:"external_port"`
+	ExternalProto      string  `json:"external_proto"`
 	GodbFilename       string  `json:"godb_filename"`
 	RedirectorName     string  `json:"redirector_name"`
 	PruneInterval      string  `json:"prune_interval"`
@@ -48,13 +51,18 @@ func RenderConfig(file string) (Config, error) {
 	cfgFile, err := os.Open(file)
 
 	if err != nil {
-		LogError.Printf("Error loading %s: %s (run install script)", file, err)
+		err = fmt.Errorf("error loading %s: %s (run install script)", file, err)
 		return parsed, err
 	}
 	defer cfgFile.Close()
 
 	parser := json.NewDecoder(cfgFile)
 	err = parser.Decode(&parsed)
+
+	// If it got past decoding, now we do validation on the actual values here.
+	if parsed.ExternalProto == "" {
+		err = fmt.Errorf("external_proto must be 'http' or 'https' in config file")
+	}
 
 	return parsed, err
 }

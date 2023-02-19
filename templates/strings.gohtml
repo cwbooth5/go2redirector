@@ -1,0 +1,131 @@
+{{ define "title" }}<title>{{ .Title }}</title>{{ end }}
+<div class="container-fluid">
+    {{ define "content" }}
+    <script type="text/javascript" src="/static/js/jquery.min.js"></script>
+    <script>
+        window.addEventListener("load", function() {
+            addstrinputs();
+        })
+      async function addstrinputs() {
+        strform.onsubmit = async (e) => {
+          e.preventDefault();
+          var strname = document.getElementById("strname").value;
+          var strvalue = document.getElementById("strvalue").value;
+          var payload = {
+            namespace: "global",
+            name: strname,
+            value: strvalue
+          };
+          let response = await fetch(`/api/variables/strings/${strname}`, {
+            method: "POST",
+            body: JSON.stringify(payload)
+          });
+          let result = await response.json();
+          document.getElementById("strname").value = "";
+          document.getElementById("strvalue").value = "";
+          location.replace("/_strings_");
+        };
+        strdelete.onsubmit = async (e) => {
+          e.preventDefault();
+          var strname = document.getElementById("strname").value;
+          let response = await fetch(`/api/variables/strings/${strname}`, {
+              method: "DELETE"
+          });
+          let result = await response.json();
+          document.getElementById("strname").value = "";
+          document.getElementById("strvalue").value = "";
+          location.replace("/_strings_");
+        }
+      }
+      </script>
+
+    <div class="row">
+         <div class="col-sm-6" style="margin-bottom: 10px;">
+            <div class="card">
+              <div class="card-header">
+                <div class="alert alert-warning" role="alert">
+                  Do not modify variables here unless you know what you are doing!
+                </div>
+                <h4 class="center">String Variable</h4>
+              </div>
+
+            <form id="strform">
+            <input type="hidden" name="internal" value="true"/>
+            {{ $numVars := len .Variable }}
+            {{ $VariableIsBeingEdited := gt $numVars 0 }}
+            <table class="table linkedit">
+
+              <tr>
+                <td>Name</td>
+                <td>
+                  <input id="strname" type="text" name="name" {{ if $VariableIsBeingEdited }}value="{{ index .Variable 0 }}"{{ end }} class="form-control" placeholder="" required/>
+                </td>
+              </tr>
+
+              <tr>
+                <td>Value</td>
+                <td>
+                  <textarea id="strvalue" name="strvalue" rows="4" cols="50" placeholder="www.example.com" class="form-control" required>{{ if $VariableIsBeingEdited }}{{ index .Variable 1 }}{{ end }}</textarea>
+                <small class="form-text text-muted">
+                  derp derp
+                  </small>
+                </td>
+              </tr>
+
+              <tr>
+              <td>
+              </td>
+
+                <td>
+                <div class="row justify-content-start">
+                  <div class="col-4">
+                    <button class="btn btn-primary" type="submit" title="Submit Changes" value="Submit Changes">Submit Changes</button>
+                    </form>
+                  </div>
+                  <div class="col-4">
+                    <form id="strdelete">
+                    <button class="btn btn-outline-secondary" type="submit" title="Delete this string variable" value="true" name="delete"{{ if eq .ActiveUser "" }}disabled{{ end }}>Delete this</button>
+                    </form>
+                  </div>
+                </div>
+                </td>
+              </tr>
+
+            </table>
+
+            </div>
+        </div>
+
+
+          <div class="col-sm-6" style="margin-bottom: 10px;">
+            <div class="card">
+              <div class="card-header">
+                <h4 class="center">Available</h4>
+              </div>
+              <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Value</th>
+                      <th>{{/*this is empty so the edit button gets a header*/}}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  {{ range $name, $value := .GetStringVariables }}
+                    <tr>
+                      <td>
+                      {{ $name }}
+                      </td>
+                      <td>
+                      {{ $value }}
+                      </td>
+                      <td><a role="button" class="btn btn-outline-secondary btn-sm" title="Edit variable" href="/_strings_/{{ $name }}">edit</a></td>
+                    </tr>
+                  {{ end }}
+                  </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{{ end }}

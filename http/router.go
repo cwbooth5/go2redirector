@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
+	"os"
 	"path"
+	"regexp"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/cwbooth5/go2redirector/core"
@@ -16,6 +18,104 @@ import (
 /*
 	HTTP handling and routes
 */
+
+/*
+The string variables handler
+*/
+func RouteStrings(w http.ResponseWriter, r *http.Request) {
+	if core.ExtractUser(r) == "" { // not logged in
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+	core.LogDebug.Println("strings route hit")
+	model := ModelIndex{
+		Title:          "String Variables",
+		LinkDB:         core.LinkDataBase,
+		RedirectorName: core.RedirectorName,
+		ActiveUser:     core.ExtractUser(r),
+	}
+	var varName, varValue string
+	sPath := strings.Split(r.URL.Path, "/")
+	varName = sPath[len(sPath)-1]
+	core.LogDebug.Printf("Incoming string name: %s\n", varName)
+
+	switch r.Method {
+	case http.MethodGet:
+		// Pull up a blank create page (default)
+		// or pre-fill fields to edit a variable
+		varValue = core.LinkDataBase.Variables.Strings[varName]
+		model.Variable = []string{varName, varValue}
+	}
+
+	err := RenderTemplate(w, "strings.gohtml", &model)
+	if err != nil {
+		core.LogError.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+/*
+The maps page shows the input boxes for a new map or in the case of an
+existing map, those same edit boxes populated with values from that map.
+*/
+func RouteMaps(w http.ResponseWriter, r *http.Request) {
+	if core.ExtractUser(r) == "" { // not logged in
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+	core.LogDebug.Println("maps route hit")
+	model := ModelIndex{
+		Title:          "Map Variables",
+		LinkDB:         core.LinkDataBase,
+		RedirectorName: core.RedirectorName,
+		ActiveUser:     core.ExtractUser(r),
+	}
+	sPath := strings.Split(r.URL.Path, "/")
+	varName := sPath[len(sPath)-1]
+	core.LogDebug.Printf("Incoming map name: %s\n", varName)
+
+	switch r.Method {
+	case http.MethodGet:
+		// Pull up a blank create page (default)
+		// or pre-fill fields to edit a variable
+		// they get here if hitting the edit button for a map or by going to _maps_
+		valuesAndNewlines := ""
+		values := []string{}
+		for key, val := range core.LinkDataBase.Variables.Maps[varName] {
+			values = append(values, strings.Join([]string{key, val}, ":"))
+		}
+		valuesAndNewlines = strings.Join(values, "\n")
+		// Overload the Variable field in the model.
+		// The name field will be filled out with the first string in the array, value is second
+		model.Variable = []string{varName, valuesAndNewlines}
+	}
+
+	err := RenderTemplate(w, "maps.gohtml", &model)
+	if err != nil {
+		core.LogError.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+/*
+The link check feature: for debugging precisely what happens behind the scenes
+
+This particular function is here solely to catch requests using the "/check"
+prefix on their queries. This redirects the user to the same input they
+provided with an added "?check=true" URL parameter so we can handle checks
+consistently in one place.
+*/
+func RouteCheck(w http.ResponseWriter, r *http.Request) {
+	// run through all redirect logic and show a list of what we would do
+	var requestURL string
+	if core.ExternalPort == 0 {
+		requestURL = fmt.Sprintf("%s://%s/%s?check=true", core.ExternalProto, core.ExternalAddress, strings.TrimPrefix(r.RequestURI, "/check/"))
+	} else {
+		requestURL = fmt.Sprintf("%s://%s:%d/%s?check=true", core.ExternalProto, core.ExternalAddress, core.ExternalPort, strings.TrimPrefix(r.RequestURI, "/check/"))
+	}
+	http.Redirect(w, r, requestURL, http.StatusFound)
+	core.LogInfo.Println("Check mode activated for a keyword")
+}
 
 // Provide an external URL used to get the entire DB in JSON format
 func RouteGetDB(w http.ResponseWriter, r *http.Request) {
@@ -31,15 +131,7 @@ func RouteGetDB(w http.ResponseWriter, r *http.Request) {
 
 func RouteLink(w http.ResponseWriter, r *http.Request) {
 	// GET requests will have the editlink template returned.
-	// POST requests will
-	requestDump, err := httputil.DumpRequest(r, true)
 
-	activeUser := core.ExtractUser(r)
-
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println(string(requestDump))
 	switch r.Method {
 	case http.MethodGet:
 		/*
@@ -50,7 +142,7 @@ func RouteLink(w http.ResponseWriter, r *http.Request) {
 		// TODO - keyword sanitization? How could this err?
 		// This bit is only applicable if a new link is getting added to a new keyword.
 		var kwdExists = false
-		keyword, _ := core.MakeNewKeyword(r.URL.Query().Get("returnto"))
+		keyword, err := core.MakeNewKeyword(r.URL.Query().Get("returnto"))
 		if err != nil {
 			// TODO: User needs to know why their keyword was bad.
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -64,7 +156,6 @@ func RouteLink(w http.ResponseWriter, r *http.Request) {
 		var kbe, le bool
 		var lnk core.Link
 
-		core.LogDebug.Printf("EDITLINK KEYWORD: %s\n", keyword)
 		// They have a good keyword and provided a link URL to add. Do we have it already?
 		id := core.NewLinkID(path.Base(r.URL.Path)) // This is a GET so the link ID is the first thing after the slash.
 		var existingLink *core.Link
@@ -74,14 +165,14 @@ func RouteLink(w http.ResponseWriter, r *http.Request) {
 			if existingLink == nil || id != 0 {
 				model := ModelIndex{
 					Title:              fmt.Sprintf("link ID %d does not exist", id),
-					LinkDB:             *core.LinkDataBase,
+					LinkDB:             core.LinkDataBase,
 					Keyword:            keyword,
 					KeywordExists:      exists,
 					KeywordBeingEdited: true,
 					LinkExists:         exists,
 					LinkBeingEdited:    existingLink,
 					RedirectorName:     core.RedirectorName,
-					ActiveUser:         activeUser,
+					ActiveUser:         core.ExtractUser(r),
 				}
 				err := RenderTemplate(w, "404.gohtml", &model)
 				if err != nil {
@@ -97,15 +188,12 @@ func RouteLink(w http.ResponseWriter, r *http.Request) {
 			// if the link is already there, they can submit a modification to the link.
 			// re-render the add page with all their form data and the existing link with the warning.
 			title = "Edit Existing Link"
-			kbe = false
 			le = true
 			lnk = *existingLink
 		} else {
 			// We render the edit page with the placeholder link to 'edit'. The template will not render this special linkZero.
 			// They will get the same edit form as usual.
 			title = "Add New Link"
-			kbe = false
-			le = false
 			lnk = *core.LinkZero
 		}
 
@@ -116,32 +204,11 @@ func RouteLink(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 		core.LogDebug.Printf("Raw Query: %s", ddd)
-		// Links can have cookie overrides.
-		// if len(r.Cookies()) > 0 {
-		// 	for _, cookie := range r.Cookies() {
-		// 		// names are pipe-delimted ex. 'keyword|name'
-		// 		nameFields := strings.Split(cookie.Name, "|")
-		// 		k := nameFields[0] // keyword
-		// 		p := nameFields[1] // pattern
-		// 		i := nameFields[2] // linkid
-
-		// 		// slashes cannot be in cookies so we use underscore. Change it back, if present.
-		// 		k = strings.ReplaceAll(k, "_", "/")
-
-		// 		kwd := core.Keyword(k)
-		// 		fmt.Printf("COOKIE SHIT: %s\n", cookie)
-		// 		if kwd == keyword && fmt.Sprint(lnk.ID) == i {
-		// 			// Cookie name indicated it was for this keyword AND link ID.
-		// 			overrides[p] = cookie.Value
-		// 		}
-		// 	}
-		// }
 
 		order := 1 // indexed at 1 since we use param1, param2...
 		for kee, val := range r.URL.Query() {
 			if strings.HasPrefix(kee, "param") {
 				overrides[fmt.Sprint(order)] = val[0]
-				// overrides[order] = LinkVariablesMap{Pattern: val[0], Replacement: ""}
 				order++
 			}
 		}
@@ -152,7 +219,7 @@ func RouteLink(w http.ResponseWriter, r *http.Request) {
 
 		model = ModelIndex{
 			Title:              title,
-			LinkDB:             *core.LinkDataBase,
+			LinkDB:             core.LinkDataBase,
 			Keyword:            keyword,
 			KeywordExists:      kwdExists,
 			KeywordBeingEdited: kbe,
@@ -160,7 +227,8 @@ func RouteLink(w http.ResponseWriter, r *http.Request) {
 			LinkBeingEdited:    &lnk,
 			RedirectorName:     core.RedirectorName,
 			Overrides:          overrides,
-			ActiveUser:         activeUser,
+			ActiveUser:         core.ExtractUser(r),
+			Variable:           []string{core.ExternalProto, core.ExternalAddress, fmt.Sprintf("%d", core.ExternalPort)},
 		}
 
 		err = RenderTemplate(w, "editlink.gohtml", &model)
@@ -228,12 +296,12 @@ func RouteLogin(w http.ResponseWriter, r *http.Request) {
 
 		if r.PostFormValue("delete") == "true" {
 			// They are logging out. We will set their cookie to expire now.
-			core.LogDebug.Printf("User '%s' is logging out\n", theirName)
+			core.LogInfo.Printf("User '%s' is logging out\n", theirName)
 			// ttl will just be the default value of "immediately"
 		} else if theirName != "" {
 			day, _ := time.ParseDuration("24h")
 			ttl = time.Now().Add(day)
-			core.LogDebug.Printf("User %s is logging in\n", theirName)
+			core.LogInfo.Printf("User %s is logging in\n", theirName)
 		}
 
 		cookie := http.Cookie{
@@ -245,43 +313,6 @@ func RouteLogin(w http.ResponseWriter, r *http.Request) {
 		// We always set a cookie. TTL determines login/logout
 		http.SetCookie(w, &cookie)
 		http.Redirect(w, r, fmt.Sprintf("%s/", r.Referer()), http.StatusFound)
-	}
-}
-
-func routeSpecialListPage(w http.ResponseWriter, r *http.Request, keyword core.Keyword, params []string, errMsg string) {
-	var model ModelIndex
-	var kwdExists = false
-
-	core.LogDebug.Printf("list page hit for special/ keyword: '%s', parameters: '%s'\n", keyword, params)
-
-	// check to see if this keyword exists.
-	// model changes based on existence of a keyword input from the form
-	if _, exists := core.LinkDataBase.Lists[keyword]; exists {
-		kwdExists = true
-	}
-
-	activeUser := core.ExtractUser(r)
-
-	// Regarding the params: It's going to come in as an array of strings. (might want to change to just string later - TODO)
-	model = ModelIndex{
-		Title:              "special list page",
-		LinkDB:             *core.LinkDataBase,
-		Keyword:            keyword,
-		KeywordExists:      kwdExists,
-		KeywordBeingEdited: true,
-		LinkExists:         false,
-		LinkBeingEdited:    core.LinkZero,
-		RedirectorName:     core.RedirectorName,
-		KeywordParams:      params,
-		UsageLog:           core.LinkLog[keyword],
-		ErrorMessage:       errMsg,
-		ActiveUser:         activeUser,
-	}
-	core.LogDebug.Printf("Usage strings: %s\n", model.UsageLog)
-	err := RenderTemplate(w, "listspecial.gohtml", &model)
-	if err != nil {
-		core.LogError.Println(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -298,7 +329,7 @@ func IndexPage(w http.ResponseWriter, r *http.Request) {
 	// model passed into index is the entire DB for now
 	model := ModelIndex{
 		Title:              "The GO2 Redirector",
-		LinkDB:             *core.LinkDataBase,
+		LinkDB:             core.LinkDataBase,
 		Keyword:            kwd,
 		KeywordExists:      false,
 		KeywordBeingEdited: false,
@@ -315,57 +346,8 @@ func IndexPage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// encapsulate the logic for calculating a special redirect and performing that redirect
-func HandleSpecial(w http.ResponseWriter, r *http.Request, keyword core.Keyword, params []string) {
-	// param is whatever was following that trailing slash.
-	// look up the keyword for this list (of one special link) (if not there, create it, return kw create page)
-	// Get the URL for that link
-	// run the substitution on the variable fields
-	// return the redirect to the client with the string-replaced URL
-	if ll, exists := core.LinkDataBase.Lists[keyword]; exists {
-		core.LogDebug.Println("Special keyword does already exist")
-		// we need the link object and the URL to render a special link.
-		url := ll.GetRedirectURL()
-		core.LogDebug.Printf("URL returned from GetRedirectURL: %s\n", url)
-		l := core.LinkDataBase.GetLink(-1, url)
-		core.LogDebug.Printf("COOKES SEEN: %s\n", r.Cookies())
-		core.LogDebug.Printf("existing list of links: %v\n", ll)
-		core.LogDebug.Printf("existing link: %v\n", l)
-
-		// This will take the request and any cookies provided to return a real URL.
-		ultimateURL, _, err := RenderSpecial(r, params, l, ll)
-		if err != nil {
-			// They didn't supply enough parameters.
-			core.LogError.Println(err)
-			routeSpecialListPage(w, r, keyword, params, err.Error())
-			return
-		}
-		core.LogInfo.Printf("URL rendered: %s\n", ultimateURL)
-
-		// register a 'click' on this specific keyword.
-		ll.Clicks++
-		l.Atime = time.Now().UTC()
-
-		// log the current usage on this particular list of links
-		usage := fmt.Sprintf("%s%s", keyword, strings.Join(params, "/"))
-		core.LogDebug.Printf("Adding usage for special keyword: %s\n", usage)
-		if ll.Logging {
-			core.LinkLog[keyword] = core.RotateSlice(core.LinkLog[keyword], usage)
-		}
-
-		core.LogDebug.Printf("Special redirect rendered: %s\n", ultimateURL)
-		core.LogInfo.Printf("Redirecting user to: %s\n", ultimateURL)
-		http.Redirect(w, r, ultimateURL, http.StatusTemporaryRedirect)
-		return
-	}
-	// send them off to the create page for a new keyword, as we'd do with a normal keyword
-	core.LogDebug.Println("Special keyword does not already exist, sending to special list page...")
-
-	routeSpecialListPage(w, r, keyword, params, "")
-}
-
 // This performs substitutions on the URL. It returns the URL string, whether it is complete, and an error value.
-func RenderSpecial(r *http.Request, params []string, l *core.Link, ll *core.ListOfLinks) (string, bool, error) {
+func RenderSpecial(params []string, l *core.Link, ll *core.ListOfLinks, check chan<- string) (string, bool, error) {
 
 	// This is a "usage" URL or one with all the variable names.
 	// http://www.example.com/{planet}/{moon}
@@ -397,22 +379,17 @@ func RenderSpecial(r *http.Request, params []string, l *core.Link, ll *core.List
 		- string.Replace(unSubURL, key, value, -1) // replace all occurrences
 		return final url
 
-
 		build a link variables map and ask for replacements to be performed.
 
 		cookies take pecedence over everything. You could override {2} if you like.
-
-
-
 	*/
 	var finalURL string
 	var complete bool
 	var err error
+	inputLinkVariables := make(map[string]string)
 
-	core.LogDebug.Printf("%v", l)
-
+	// This is more or less an assertion of a condition that should never happen.
 	if len(l.Lists) > 1 {
-		// This is more or less an assertion of a condition that should never happen.
 		core.LogDebug.Println("Special was a member of more than 1 list!!")
 		core.PrintList(*ll)
 		for i, v := range l.Lists {
@@ -420,93 +397,93 @@ func RenderSpecial(r *http.Request, params []string, l *core.Link, ll *core.List
 		}
 	}
 
-	inputLinkVariables := make(map[string]string)
-
-	// params provided in the URL take precedence over everything else. If they provided positional
-	// parameters, we are using those as substitutions in numbered positions (if this is a special keyword).
-
+	/*
+		This range shouldn't be needed if we are only allowing a single param.
+		It will stay here to get {1} now and be compatible with {2} if we ever decide to support that.
+		We can't remove this {1} feature now that we've released with it. It's probably fine.
+	*/
 	for idx, val := range params {
 		if val == "" {
 			continue // empty string provided, ignore.
 		}
 		// The index is used here so they can sub {1}, {2}, and so on...
+		// Note this key is a string of a number. kinda dumb.
 		inputLinkVariables[fmt.Sprint(idx+1)] = val
 	}
-	if len(inputLinkVariables) != 0 {
-		finalURL, complete = core.GetURL(l.URL, inputLinkVariables)
-		// return early if their params provided the remaining substitutions.
-		if complete {
-			return finalURL, complete, err
-		}
-	}
-	core.LogDebug.Printf("Variables after parameters: %s\n", inputLinkVariables)
+	core.LogDebug.Printf("Variables before parameters: %s\n", inputLinkVariables)
 
-	// Check cookies first and perform replacements.
-	// For any substitutions in the usage URL, we allow the user to override anything.
-	// if len(r.Cookies()) > 0 {
-	// 	// If the client has cookies, use them.
-	// 	core.LogDebug.Printf("User had custom cookies to override values: %s\n", r.Cookies())
-	// 	for _, c := range r.Cookies() {
-	// 		nameFragments := strings.Split(c.Name, "|")
-	// 		k := nameFragments[0]
-	// 		p := nameFragments[1]
-	// 		i := nameFragments[2]
-
-	// 		// slashes cannot be in cookies so we use underscore. Change it back, if present.
-	// 		k = strings.ReplaceAll(k, "_", "/")
-
-	// 		kwd := core.Keyword(k)
-	// 		if kwd == ll.Keyword && fmt.Sprint(l.ID) == i {
-	// 			inputLinkVariables[p] = c.Value
-	// 		}
-	// 	}
-	// }
-	// core.LogDebug.Printf("Variables after cookies: %s\n", inputLinkVariables)
-	finalURL, complete = core.GetURL(l.URL, inputLinkVariables)
-	// Return early if we find no more substitutions to be done.
-	if complete {
+	// look on the list at this linkid, get the extraction regex.
+	// We need to check it here to make sure it compiles. This is also checked when they submit it.
+	extractionRegex, err := regexp.Compile(ll.Extractions[l.ID].Regex)
+	if err != nil {
+		fmt.Printf("regex compilation failed! %s", err) //TODO: proper internal error
 		return finalURL, complete, err
 	}
+	// run regex using the entire parameter {1} as a string.
+	matches := extractionRegex.FindStringSubmatch(inputLinkVariables["1"])
+	check <- fmt.Sprintf("Extraction regex being used: %s", extractionRegex)
+	check <- fmt.Sprintf("Matches made on parameter '%s': %s", inputLinkVariables["1"], matches)
 
-	// Finally, perform substitutions on the remaining URL using the defaults set on the link.
-	finalURL, complete = core.GetURL(finalURL, l.LinkVariables)
+	/* We need the named group's name and the value we captured.
+	The name shows us were we are going to sub data into the URL string.
+	The captured value gives us something to use in the variable lookup.
+	*/
+	res := make(map[string]string)
+	for i, name := range matches {
+		if i == 0 {
+			continue // first element is not useful, it's the matched string itself
+		}
+		res[extractionRegex.SubexpNames()[i]] = name
+	}
+
+	check <- fmt.Sprintf("named parameters and extracted values: %s", res)
+	linkDefaultVars := l.LinkVariables
+
+	finalURL, complete, err = core.GetURL(l.URL, res, inputLinkVariables, linkDefaultVars, check)
+	core.LogDebug.Printf("link: %s\n", finalURL)
 
 	if !complete {
 		err = fmt.Errorf("not all substitutions were completed on the URL")
+		check <- err.Error()
 	}
 
 	return finalURL, complete, err
 }
 
+/*
+Right now, this is a wrapper for renderListPage just in case we want to ever
+do something special here.
+*/
 func RenderDotPage(r *http.Request) (string, ModelIndex, error) {
-	// right now, this is a wrapper for renderListPage just in case we want to ever
-	// do something special here.
 	return RenderListPage(r)
 }
 
+/*
+Return everything needed to get to the list page
+*/
 func RenderListPage(r *http.Request) (string, ModelIndex, error) {
 	var tmpl string
 	var model ModelIndex
 	var err error
-
 	var kwdExists = false
 
 	pth, err := core.ParsePath(r.URL.Path)
-	if err != nil {
+	inputKeyword := r.URL.Query().Get("keyword") // only set if they entered a keyword in the input box
+
+	if err != nil && inputKeyword == "" {
 		core.LogError.Println(err)
 		model.ErrorMessage = err.Error()
 		return "list.gohtml", model, err
 	}
 
-	inputKeyword := r.URL.Query().Get("keyword") // only set if they entered a keyword in the input box
 	if inputKeyword != "" {
-		core.LogDebug.Printf("User supplied keyword: %s\n", inputKeyword)
+		// core.LogDebug.Printf("User supplied keyword: %s\n", inputKeyword)
 		k := strings.Split(inputKeyword, "/")[0]
 		pth.Keyword, _ = core.MakeNewKeyword(k)
 	}
 
-	for _, val := range core.LinkDataBase.Lists {
-		core.Similar(string(pth.Keyword), string(val.Keyword))
+	for kwd := range core.SearchKeywordsData {
+		core.Similar(string(pth.Keyword), kwd)
 	}
 	// check to see if this keyword exists.
 	// model changes based on existence of a keyword input from the form
@@ -525,7 +502,7 @@ func RenderListPage(r *http.Request) (string, ModelIndex, error) {
 
 	model = ModelIndex{
 		Title:              "list",
-		LinkDB:             *core.LinkDataBase,
+		LinkDB:             core.LinkDataBase,
 		Keyword:            pth.Keyword,
 		KeywordExists:      kwdExists,
 		KeywordBeingEdited: bEdited,
@@ -552,7 +529,6 @@ func RenderListPage(r *http.Request) (string, ModelIndex, error) {
 // They can also land on this page if their keyword had a . prefix or / suffix.
 // /keyword/.absent || /keyword/absent/ || /keyword/absent == edit and couple new link tagged 'absent' on this list (note stripped)
 // /keyword/.present || /keyword/present/ || /keyword/present == edit existing link on editlink page
-//
 
 func RenderLinkPage(r *http.Request) (string, ModelIndex, error) {
 	var model ModelIndex
@@ -580,9 +556,10 @@ func RenderLinkPage(r *http.Request) (string, ModelIndex, error) {
 		core.LogDebug.Printf("Link already exists. We are returning the existing link and modify page.%v", link)
 		// if the link is already there, they can submit a modification to the link.
 		// re-render the add page with all their form data and the existing link with the warning.
+		// Variable field is being abused to sneak in the external addr/port for the js to redirect browsers to the api properly
 		model = ModelIndex{
 			Title:              "Edit Existing Link",
-			LinkDB:             *core.LinkDataBase,
+			LinkDB:             core.LinkDataBase,
 			Keyword:            pth.Keyword,
 			KeywordExists:      kwdExists,
 			KeywordBeingEdited: false,
@@ -590,11 +567,12 @@ func RenderLinkPage(r *http.Request) (string, ModelIndex, error) {
 			LinkBeingEdited:    link,
 			RedirectorName:     core.RedirectorName,
 			ActiveUser:         activeUser,
+			Variable:           []string{core.ExternalProto, core.ExternalAddress, fmt.Sprintf("%d", core.ExternalPort)},
 		}
 	} else {
 		model = ModelIndex{
 			Title:              "Add New Link",
-			LinkDB:             *core.LinkDataBase,
+			LinkDB:             core.LinkDataBase,
 			Keyword:            pth.Keyword,
 			KeywordExists:      kwdExists,
 			KeywordBeingEdited: false,
@@ -602,6 +580,7 @@ func RenderLinkPage(r *http.Request) (string, ModelIndex, error) {
 			LinkBeingEdited:    core.LinkZero,
 			RedirectorName:     core.RedirectorName,
 			ActiveUser:         activeUser,
+			Variable:           []string{core.ExternalProto, core.ExternalAddress, fmt.Sprintf("%d", core.ExternalPort)},
 		}
 	}
 	return "editlink.gohtml", model, err
@@ -611,7 +590,6 @@ func RenderLinkPage(r *http.Request) (string, ModelIndex, error) {
 // Execute it, sending it to the client.
 func RenderTemplate(w http.ResponseWriter, name string, data *ModelIndex) error {
 	// Ensure the template exists in the map.
-	core.LogDebug.Printf("Rendering template named: '%s'\n", name)
 	tmpl, ok := Templates[name]
 	if !ok {
 		return fmt.Errorf("the template %s does not exist", name)
@@ -631,4 +609,83 @@ func RenderTemplate(w http.ResponseWriter, name string, data *ModelIndex) error 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	buf.WriteTo(w)
 	return nil
+}
+
+/*
+Using a template file, substitute in some config variables to form
+the opensearch.xml so it functions with this redirector instance.
+
+Browsers will request this if the HTML says we have it. The rendered
+version of this file will contain all the needed substitutions, as
+dictated from the config file.
+*/
+func RenderOpenSearch(templatePath string, outPath string) error {
+	var u string
+	var err error
+	if core.ExternalPort == 0 {
+		u = fmt.Sprintf("%s://%s", core.ExternalProto, core.ExternalAddress)
+	} else {
+		u = fmt.Sprintf("%s://%s:%d", core.ExternalProto, core.ExternalAddress, core.ExternalPort)
+	}
+
+	searchURL := fmt.Sprintf("%s/.{searchTerms}", u)
+	suggestURL := fmt.Sprintf("%s/_suggest_/?q={searchTerms}", u)
+	baseURL := u
+
+	t, err := template.ParseFiles(templatePath)
+	if err != nil {
+		return err
+	}
+
+	f, err := os.Create(outPath)
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+
+	config := map[string]string{
+		"searchURL":      searchURL,
+		"suggestURL":     suggestURL,
+		"baseURL":        baseURL,
+		"redirectorName": core.RedirectorName,
+	}
+
+	err = t.Execute(f, config)
+	if err != nil {
+		return err
+	}
+	return err
+}
+
+/*
+RouteSuggest implements part of the opensearch protocol, specifically the search
+suggestions extension.
+
+Every time the user types a character in their URL bar, the browser is going to
+send a request to this route. The route responds with an array of information
+the browser uses to populate the seach suggestions.
+*/
+func RouteSuggest(w http.ResponseWriter, r *http.Request) {
+	var suggestionPrefix string
+	// the characters they typed in the search bar
+	if r.URL.RawQuery == "" || len(r.URL.Query()["q"]) < 1 {
+		http.Error(w, "query required (use ?q=searchterm)", http.StatusBadRequest)
+		return
+	}
+	suggestionPrefix = r.URL.Query()["q"][0]
+
+	searchTerms := core.SearchDB(suggestionPrefix, 15)
+	core.LogDebug.Printf("suggest prefix: %s, terms: %s\n", suggestionPrefix, searchTerms)
+	// Other browsers *could* use these arrays, they're part of the standard/protocol.
+	reply := []interface{}{suggestionPrefix, searchTerms}
+
+	// check before sending back
+	data, err := json.Marshal(reply)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(data)
 }
