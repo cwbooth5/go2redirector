@@ -127,6 +127,8 @@ For the user input of `go2 planets/mars/weather` the go2redirector would locate 
 
 I need all the help I can get making my novice level golang look nicer. There are new features we want to add and not enough people to do it. If you'd like to contribute, just fork the repository and submit a PR! File any enhancement requests or bugs on the issue tracker here in the go2redirector project.
 
+See `CONTRIBUTING.md` for more information.
+
 ## Credits
 
 The original redirector [f5go](https://github.com/f5devcentral/f5go) was designed by Saul Pwanson, with assistance from Bryce Bockman and Treebird(tm).
