@@ -118,8 +118,7 @@ func (m *ModelIndex) PrettyTime(t time.Time) string {
 	now := time.Now()
 	if t.After(now) {
 		sub := t.Sub(now)
-		x := fmt.Sprintf("%s", sub.Truncate(time.Second))
-		return x
+		return sub.Truncate(time.Second).String()
 	}
 
 	// Dates in the past - This uses 30 days/720 hours for a month
@@ -209,8 +208,8 @@ func (m *ModelIndex) GetLinkEdits(id int) []*core.EditRecord {
 // containing substring matches to the search term.
 func (m *ModelIndex) GetSimilar() []string {
 	searchTerm := string(m.Keyword)
-	results := core.SearchDB(searchTerm, 20)
-	return results
+	// return core.SearchDB(searchTerm, 20)
+	return []string{searchTerm} // TODO, DEBUG
 }
 
 // This is used so the template has all variables available to put into tables.

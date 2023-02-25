@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 	"unicode"
 )
@@ -17,6 +16,9 @@ import (
 /*
 	Primitives
 */
+
+// goroutine sync mechanism for linkdatabase interactions
+var SYNC = make(chan int, 1)
 
 // used for Mtime, date set ridiculously far in the future
 var Never = time.Date(2081, 7, 17, 7, 12, 0, 0, time.UTC)
@@ -100,7 +102,6 @@ type LinkDatabase struct {
 	Links      map[int]*Link
 	Variables  *UserVariables
 	NextLinkID int
-	m          sync.Mutex
 }
 
 // Gpath holds a Keyword, a Tag, and an array of any Params supplied by the user.
@@ -409,9 +410,10 @@ func MakeNewLinkDatabase() *LinkDatabase {
 
 // Import will read data from the provided io.Reader into memory at the global
 // LinkDataBase variable.
-func (d *LinkDatabase) Import(fh io.Reader) error {
+func (d *LinkDatabase) Import(fh io.Reader, s chan int) error {
 	var tempdb LinkDatabase
 	var err error
+	<-s
 	data, _ := io.ReadAll(fh)
 	err = json.Unmarshal(data, &tempdb)
 	if err != nil {
@@ -419,15 +421,15 @@ func (d *LinkDatabase) Import(fh io.Reader) error {
 		return err
 	}
 
-	d.m.Lock()
-	defer d.m.Unlock()
 	LinkDataBase = &tempdb
+	s <- 1
 	return err
 }
 
 // Export will marshal the current LinkDataBase into JSON and write it to the provided
 // io.Writer.
-func (d *LinkDatabase) Export(fh io.Writer) error {
+func (d *LinkDatabase) Export(fh io.Writer, s chan int) error {
+	<-s
 	file, err := json.Marshal(d)
 	if err != nil {
 		LogError.Println("JSON marshal error:", err)
@@ -437,6 +439,7 @@ func (d *LinkDatabase) Export(fh io.Writer) error {
 	if err != nil {
 		LogError.Fatal(err)
 	}
+	s <- 1
 	return err
 }
 
@@ -455,24 +458,23 @@ func newEmptyLink(d *LinkDatabase, incomingURL string, title string, keyword Key
 		LinkVariables: make(map[string]string),
 	}
 
-	d.m.Lock()
-	defer d.m.Unlock()
-
 	// create the link in the DB at ID == 0, which is a unique link object.
 	d.Links[0] = &newLink
 	return &newLink
 }
 
-// Decouple a list of links and a specific link.
-// If the removal of a link from the list results in a zero-length list, the list is deleted.
-// When the link is removed, its tagbinding entry is removed as well.
+/*
+Decouple a list of links and a specific link.
+If the removal of a link from the list results in a zero-length list, the list is deleted.
+When the link is removed, its tagbinding entry is removed as well.
+Any nil arguments are checked and the function returns without doing anything.
+*/
 func (d *LinkDatabase) Decouple(ll *ListOfLinks, linkObj *Link) {
-
+	if ll == nil || linkObj == nil {
+		return
+	}
 	delete(ll.Links, linkObj.ID)
 	LogInfo.Printf("Link ID %d has been decoupled from keyword '%s'\n", linkObj.ID, ll.Keyword)
-
-	d.m.Lock()
-	defer d.m.Unlock()
 
 	// If the length of the list now is zero, the list should be removed entirely.
 	if len(ll.Links) == 0 {
@@ -513,9 +515,6 @@ func (d *LinkDatabase) Decouple(ll *ListOfLinks, linkObj *Link) {
 func (d *LinkDatabase) Couple(ll *ListOfLinks, linkObj *Link) {
 	linkObj.Mtime = time.Now().UTC()
 
-	d.m.Lock()
-	defer d.m.Unlock()
-
 	if _, exists := d.Lists[ll.Keyword]; !exists {
 		d.Lists[ll.Keyword] = ll // create the list of links
 	}
@@ -546,9 +545,6 @@ func (d *LinkDatabase) CommitNewLink(l *Link) (int, error) {
 	var err error
 	var id int
 
-	d.m.Lock()
-	defer d.m.Unlock()
-
 	if l.ID == 0 {
 		id = d.NextLinkID
 		l.ID = id
@@ -566,9 +562,6 @@ func (d *LinkDatabase) CommitNewLink(l *Link) (int, error) {
 
 // Get a link object by ID or URL.
 func (d *LinkDatabase) GetLink(id int, url string) *Link {
-	d.m.Lock()
-	defer d.m.Unlock()
-
 	for _, lnk := range d.Links {
 		if lnk.ID == id || lnk.URL == url {
 			return lnk
@@ -582,9 +575,6 @@ func (d *LinkDatabase) GetLink(id int, url string) *Link {
 // Sort by access time (Atime)
 func (d *LinkDatabase) LinksByAtime(count int) []*Link {
 	linkPile := []*Link{}
-
-	d.m.Lock()
-	defer d.m.Unlock()
 
 	for _, link := range d.Links {
 		linkPile = append(linkPile, link)
@@ -601,9 +591,6 @@ func (d *LinkDatabase) LinksByAtime(count int) []*Link {
 func (d *LinkDatabase) LinksByMtime(count int) []*Link {
 	linkPile := []*Link{}
 
-	d.m.Lock()
-	defer d.m.Unlock()
-
 	for _, link := range d.Links {
 		linkPile = append(linkPile, link)
 	}
@@ -617,9 +604,6 @@ func (d *LinkDatabase) LinksByMtime(count int) []*Link {
 
 func (d *LinkDatabase) LinksByClicks(count int) []*Link {
 	linkPile := []*Link{}
-
-	d.m.Lock()
-	defer d.m.Unlock()
 
 	for _, link := range d.Links {
 		linkPile = append(linkPile, link)
@@ -638,9 +622,6 @@ func (d *LinkDatabase) LinksByClicks(count int) []*Link {
 func (d *LinkDatabase) TopLists(count int) []*ListOfLinks {
 	listPile := []*ListOfLinks{}
 
-	d.m.Lock()
-	defer d.m.Unlock()
-
 	for _, list := range d.Lists {
 		listPile = append(listPile, list)
 	}
@@ -649,6 +630,56 @@ func (d *LinkDatabase) TopLists(count int) []*ListOfLinks {
 		return listPile
 	}
 	return listPile[:count]
+}
+
+/*
+IndexKeywords is meant to be run at a regular interval. It maintains a
+data structure full of keywords and interesting strings associated with
+these keywords. This is useful for search functions, so they don't have
+to iterate through the entire linkDB themselves.
+*/
+func (d *LinkDatabase) IndexKeywords() {
+	for kwd, ll := range d.Lists {
+		SearchKeywordsTrie.Insert(strings.ToLower(kwd.ToString()))
+		// need to get the link tags used on the list
+		var alltags string
+		for _, bindings := range ll.TagBindings {
+			b := strings.Join(bindings, " ")
+			alltags = alltags + fmt.Sprintf(" %s", b)
+		}
+		SearchKeywordsData[kwd.ToString()] = alltags
+	}
+	for _, lnk := range d.Links {
+		// join with spaces: title, linkvariables(keys)
+		t := lnk.Title
+		for n := range lnk.LinkVariables {
+			t = t + fmt.Sprintf(" %s", n)
+		}
+		// all list names this link is a member of
+		for _, list := range lnk.Lists {
+			searchStr := strings.TrimSpace(SearchKeywordsData[list.ToString()] + fmt.Sprintf(" %s", t))
+			searchStr = strings.ToLower(searchStr)
+			SearchKeywordsData[list.ToString()] = searchStr
+		}
+	}
+}
+
+/*
+Iterate through the link database and remove links which have Dtime(s) before 'now'.
+
+This is a destructive operation, meant to keep the DB free of links which are expired.
+*/
+func (d *LinkDatabase) Prune() {
+	now := time.Now()
+	for id, lnk := range d.Links {
+		if lnk.Dtime.Before(now) {
+			if lnk.Dtime.Equal(BurnTime) {
+				continue // special case: If it's a burner, leave it where it is.
+			}
+			DestroyLink(lnk)
+			LogInfo.Printf("Pruning link from database: %d", id)
+		}
+	}
 }
 
 /*

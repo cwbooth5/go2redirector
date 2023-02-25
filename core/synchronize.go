@@ -58,8 +58,6 @@ func generateSeed() int {
 }
 
 func (d *LinkDatabase) ExportNetwork() error {
-	d.m.Lock()
-	defer d.m.Unlock()
 	file, err := json.Marshal(d)
 	if err != nil {
 		LogError.Println("JSON marshal error:", err)

@@ -248,9 +248,6 @@ test 2.1:
 
 test 3:
 -
-
-
-
 */
 func TestRedirectSingleExists(t *testing.T) {
 	// create the keyword we will request
@@ -516,4 +513,5 @@ func TestConfigLoad(t *testing.T) {
 
 func init() {
 	core.ConfigureLogging(true, os.Stdout)
+	core.SYNC <- 1
 }
