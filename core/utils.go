@@ -93,10 +93,8 @@ Shutdown is meant to handle graceful termination of the redirector.
 
 Ctrl+C/sigterm is the signal this runs on.
 */
-func Shutdown(d *LinkDatabase) {
+func Shutdown(d *LinkDatabase, s chan int) {
 	log.Println("Signal caught. Shutting down...")
-	d.m.Lock()
-	defer d.m.Unlock()
 
 	// prevent destruction of data by writing to a backup first.
 	tmpfile := fmt.Sprintf("%s.tmp", GodbFileName)
@@ -105,7 +103,7 @@ func Shutdown(d *LinkDatabase) {
 		log.Fatalf("Could not export to %s\n", tmpfile)
 	}
 	defer fh.Close()
-	d.Export(fh)
+	d.Export(fh, s)
 
 	// now move over the existing db file so it can be used on the next startup
 	err = os.Rename(tmpfile, GodbFileName)
@@ -118,7 +116,7 @@ func Shutdown(d *LinkDatabase) {
 
 // CheckpointDB saves a copy of the link database at a provided interval (a time duration string).
 // This also syncs the DB to the failover peer through a TCP connection at the same interval.
-func CheckpointDB(duration string) {
+func CheckpointDB(duration string, s chan int) {
 	d, err := time.ParseDuration(duration)
 	if err != nil {
 		LogError.Fatalf("Specified duration of '%s' could not be parsed\n", duration)
@@ -136,7 +134,7 @@ func CheckpointDB(duration string) {
 			LogError.Fatalf("Could not export to %s\n", GodbFileName)
 		}
 
-		err = LinkDataBase.Export(fh)
+		err = LinkDataBase.Export(fh, s)
 		if err != nil {
 			LogError.Fatalf("DB checkpoint to file '%s' failed. %s", fileName, err)
 		}
@@ -282,52 +280,24 @@ func DestroyLink(l *Link) {
 
 // pruneExpiringLinks will look through the link database and delete links which
 // have a Dtime in the past.
-func PruneExpiringLinks() {
+func PruneExpiringLinks(c chan int) {
 	duration, _ := time.ParseDuration(PruneInterval)
 	for {
-		now := time.Now()
-		for id, lnk := range LinkDataBase.Links {
-			if lnk.Dtime.Before(now) {
-				// special case: If it's a burner, leave it where it is.
-				if lnk.Dtime.Equal(BurnTime) {
-					continue
-				}
-				DestroyLink(lnk)
-				LogInfo.Printf("Pruning link from database: %d", id)
-			}
-		}
+		<-c
+		LinkDataBase.Prune()
+		c <- 1
 		time.Sleep(duration)
 	}
 }
 
 // Populate easily-searchable structures with information from the real linkDB.
 // This is meant to be run in a goroutine every 30 seconds or so.
-func IndexSearchDB(interval string) {
+func IndexSearchDB(interval string, s chan int) {
 	duration, _ := time.ParseDuration(interval)
 	for {
-		for kwd, ll := range LinkDataBase.Lists {
-			SearchKeywordsTrie.Insert(strings.ToLower(kwd.ToString()))
-			// need to get the link tags used on the list
-			var alltags string
-			for _, bindings := range ll.TagBindings {
-				b := strings.Join(bindings, " ")
-				alltags = alltags + fmt.Sprintf(" %s", b)
-			}
-			SearchKeywordsData[kwd.ToString()] = alltags
-		}
-		for _, lnk := range LinkDataBase.Links {
-			// join with spaces: title, linkvariables(keys)
-			t := lnk.Title
-			for n := range lnk.LinkVariables {
-				t = t + fmt.Sprintf(" %s", n)
-			}
-			// all list names this link is a member of
-			for _, list := range lnk.Lists {
-				searchStr := strings.TrimSpace(SearchKeywordsData[list.ToString()] + fmt.Sprintf(" %s", t))
-				searchStr = strings.ToLower(searchStr)
-				SearchKeywordsData[list.ToString()] = searchStr
-			}
-		}
+		<-s
+		LinkDataBase.IndexKeywords()
+		s <- 1
 		time.Sleep(duration)
 	}
 }
@@ -534,7 +504,7 @@ func ParsePath(s string) (Gpath, error) {
 	var err error
 	var k Keyword
 	var t string
-	var m []string
+	var p []string
 
 	s = html.EscapeString(s)
 	// check mode - strip it if it's there.
@@ -542,10 +512,9 @@ func ParsePath(s string) (Gpath, error) {
 	tr = strings.TrimPrefix(tr, "/")
 	tr = strings.TrimPrefix(tr, ".")
 
-	// LogDebug.Printf("trimmed kwd: '%s'\n", tr)
 	if tr == "" {
 		err = errors.New("invalid keyword, blank")
-		gp := Gpath{k, t, m}
+		gp := Gpath{k, t, p}
 		return gp, err
 	}
 
@@ -553,14 +522,14 @@ func ParsePath(s string) (Gpath, error) {
 	k, err = MakeNewKeyword(sp[0])
 	if len(sp) > 2 {
 		t = sp[1]
-		m = sp[2:]
+		p = sp[2:]
 	} else if len(sp) > 1 {
 		t = sp[1]
 	}
 	gp = Gpath{
 		Keyword: k,
 		Tag:     t,
-		Params:  m,
+		Params:  p,
 	}
 
 	return gp, err
@@ -616,7 +585,7 @@ func GetCheckMode(r *http.Request) bool {
 type GoRequest struct {
 	WantsCheck bool   // keyword starts with 'check'
 	CheckMode  bool   // request has check=true URL parameter
-	EditMode   bool   // keywords starts with '.'
+	EditMode   bool   // true if keyword starts with '.'
 	Path       Gpath  // internal path representation
 	Valid      bool   // Is the keyword valid?
 	User       string // pulled from the cookie their browser sent
@@ -678,13 +647,15 @@ func MakeNewGoRequest(r *http.Request) (GoRequest, error) {
 // This can be used both for suggestions and full search
 // This search algorithm weights the results based on how much of a match we find.
 // Results are ordered from most to least relevant in the returned array.
-func SearchDB(term string, maxresults int) []string {
+func SearchDB(term string, maxresults int, s chan int) []string {
 	term = strings.ToLower(term)
 	term = strings.TrimSpace(term)
 
 	// using a map for uniqueness
 	// values are weight from 1-100 (1 is most relevant)
 	targets := make(map[string]int)
+
+	<-s
 
 	// exact match on a keyword
 	if SearchKeywordsTrie.Search(term) {
@@ -758,6 +729,7 @@ func SearchDB(term string, maxresults int) []string {
 		searchTerms = keys
 	}
 	LogDebug.Printf("search term: %s, results: %s\n", term, searchTerms)
+	s <- 1
 
 	return searchTerms
 }

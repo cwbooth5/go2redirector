@@ -34,7 +34,6 @@ func handleKeyword(w http.ResponseWriter, r *http.Request, check chan<- string) 
 	}
 
 	msg := fmt.Sprintf("incoming URL path: %s", request.Path)
-	core.LogDebug.Println(msg)
 	check <- msg
 
 	if request.EditMode {
@@ -49,7 +48,6 @@ func handleKeyword(w http.ResponseWriter, r *http.Request, check chan<- string) 
 	ll, exists := core.LinkDataBase.Lists[request.Path.Keyword]
 	if !exists {
 		msg = fmt.Sprintf("keyword '%s' does not exist, rendering list page", request.Path.Keyword)
-		core.LogDebug.Println(msg)
 		check <- msg
 		tmpl, model, err = gohttp.RenderListPage(r)
 		return tmpl, model, redirect, err
@@ -319,11 +317,12 @@ func routeHappyHandler(w http.ResponseWriter, r *http.Request) {
 
 		The "check" interface: They send a redirect in with check=true in the url parameters
 	*/
-
+	<-core.SYNC
 	if r.RequestURI == "/favicon.ico" {
 		// This is requested by so many browsers, we can handle it specifically
 		// here to avoid nonsensical keyword lookups.
 		http.Redirect(w, r, "/static/img/favicon.ico", http.StatusPermanentRedirect)
+		core.SYNC <- 1
 		return
 	}
 
@@ -334,18 +333,21 @@ func routeHappyHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodGet {
 		http.Error(w, "GET requests only", http.StatusBadRequest)
+		core.SYNC <- 1
 		return
 	}
 
 	request, reqerr := core.MakeNewGoRequest(r)
 	if reqerr != nil {
 		gohttp.IndexPage(w, r)
+		core.SYNC <- 1
 		return
 	}
 
 	// If for any reason their request didn't look like a go2 keyword/tag, they get index
 	if r.URL.Path == "/" && !request.Valid {
 		gohttp.IndexPage(w, r)
+		core.SYNC <- 1
 		return
 	}
 
@@ -364,6 +366,7 @@ func routeHappyHandler(w http.ResponseWriter, r *http.Request) {
 			u = fmt.Sprintf("http://%s:%d/%s?check=true", core.ExternalAddress, core.ExternalPort, request.StringPath())
 		}
 		http.Redirect(w, r, u, http.StatusTemporaryRedirect)
+		core.SYNC <- 1
 		return
 	}
 
@@ -389,6 +392,7 @@ func routeHappyHandler(w http.ResponseWriter, r *http.Request) {
 			model.Variable = append(model.Variable, item)
 		}
 		gohttp.RenderTemplate(w, tmpl, &model)
+		core.SYNC <- 1
 		return
 	}
 
@@ -407,6 +411,7 @@ func routeHappyHandler(w http.ResponseWriter, r *http.Request) {
 			core.LogError.Println(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
+		core.SYNC <- 1
 		return
 	} else {
 		// call to handleKeyword is synchronous here, channel is buffered to allow it to run/return
@@ -418,10 +423,11 @@ func routeHappyHandler(w http.ResponseWriter, r *http.Request) {
 
 		if !redirect {
 			gohttp.RenderTemplate(w, tmpl, &model)
+			core.SYNC <- 1
 			return
 		}
 	}
-
+	core.SYNC <- 1
 }
 
 // Run the webserver frontend. This is only done when this instance of the redirector
@@ -468,6 +474,9 @@ func main() {
 		User errors must be sent back to the users and must not panic anywhere here
 		anything hitting URLs we cannot handle or objective errors must not log
 	*/
+
+	// This is the starting point of the goroutine sync mechanism
+	core.SYNC <- 1
 
 	// TODO: flags for log levels
 	go2Config, e := core.RenderConfig("go2config.json")
@@ -553,8 +562,8 @@ func main() {
 				// This is the standby -> active transition. Note we are loading our linkdb
 				// not from the disk, but from our core.LinkDataBase object.
 				go core.SendUpdates(core.LinkDataBase)
-				go core.PruneExpiringLinks()
-				go core.CheckpointDB("300s")
+				go core.PruneExpiringLinks(core.SYNC)
+				go core.CheckpointDB("300s", core.SYNC)
 				s := configureWebserver(listenAddress, listenPort)
 				err := http.ListenAndServe(s, nil)
 				if err != nil {
@@ -573,7 +582,7 @@ func main() {
 		if err != nil {
 			fmt.Printf("DB file '%s' could not be opened! Run the install script to create one.\n", core.GodbFileName)
 		}
-		err = core.LinkDataBase.Import(fh)
+		err = core.LinkDataBase.Import(fh, core.SYNC)
 		if err != nil {
 			core.LogError.Fatal(err)
 		}
@@ -615,9 +624,9 @@ func main() {
 		if core.FailoverPeer != "" {
 			go core.SendUpdates(core.LinkDataBase)
 		}
-		go core.PruneExpiringLinks()
-		go core.CheckpointDB("300s")
-		go core.IndexSearchDB("30s")
+		go core.PruneExpiringLinks(core.SYNC)
+		go core.CheckpointDB("7s", core.SYNC)
+		go core.IndexSearchDB("10s", core.SYNC)
 
 		// handle ctrl+c and sigterm - try to shut down gracefully and dump the db
 		shutdownChan := make(chan os.Signal, 1)
@@ -625,7 +634,7 @@ func main() {
 
 		go func() {
 			<-shutdownChan
-			core.Shutdown(core.LinkDataBase)
+			core.Shutdown(core.LinkDataBase, core.SYNC)
 			os.Exit(1)
 		}()
 

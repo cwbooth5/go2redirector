@@ -45,11 +45,10 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 
 	// CORS header since browsers will check this for cross-origin accesses
 	if _, exists := w.Header()["Access-Control-Allow-Origin"]; !exists {
-		core.LogDebug.Println("API called, adding CORS header")
 		w.Header().Add("Access-Control-Allow-Origin", "*")
 	}
 	// Classification of API paths
-
+	<-core.SYNC
 	// link
 	if strings.HasPrefix(r.URL.RequestURI(), "/api/link") {
 		var internal bool // Is this going to get a page returned(internal == true) or a JSON response?
@@ -107,6 +106,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 				// Check to see if we even have a link at this ID.
 				if _, exists := core.LinkDataBase.Links[id]; !exists {
 					w.WriteHeader(http.StatusNotFound)
+					core.SYNC <- 1
 					return
 				}
 				inboundLink = core.LinkDataBase.Links[id]
@@ -133,10 +133,12 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 				if internal {
 					// The template called this, so 302 to the dotpage for this keyword.
 					http.Redirect(w, r, fmt.Sprintf("/.%s", outboundLink.Keyword), http.StatusFound)
+					core.SYNC <- 1
 					return
 				}
 				// this isn't rendering a template, just an http response
 				w.WriteHeader(http.StatusGone)
+				core.SYNC <- 1
 				return
 			}
 
@@ -215,6 +217,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 				// give both debug log and user feedback on the failed input
 				core.LogError.Printf("regex compilation of '%s' failed! %s", inputRegex, err)
 				http.Error(w, err.Error(), http.StatusBadRequest)
+				core.SYNC <- 1
 				return
 			}
 			// only change these if validation passed
@@ -234,6 +237,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			if internal {
 				// The template called this, so 302 to the dotpage for this keyword.
 				http.Redirect(w, r, fmt.Sprintf("/.%s", outboundLink.Keyword), http.StatusFound)
+				core.SYNC <- 1
 				return
 			}
 			// this isn't rendering a template, just an http response
@@ -251,12 +255,14 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			core.LogDebug.Printf("Incoming link id: %d\n", linkid)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+				core.SYNC <- 1
 				return
 			}
 
 			data, err := json.Marshal(core.LinkDataBase.Links[linkid])
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+				core.SYNC <- 1
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
@@ -283,6 +289,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 				msg := "Behavior entered was malformed"
 				core.LogError.Print(msg)
 				http.Error(w, msg, http.StatusBadRequest)
+				core.SYNC <- 1
 				return
 			}
 
@@ -299,6 +306,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			if internal {
 				// The template called this, so 302 to the dotpage for this keyword.
 				http.Redirect(w, r, fmt.Sprintf("/.%s", kw), http.StatusFound)
+				core.SYNC <- 1
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
@@ -320,6 +328,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			data, err := json.Marshal(core.LinkDataBase.Lists)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+				core.SYNC <- 1
 				return
 			}
 			w.Write(data)
@@ -346,6 +355,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 		split := strings.Split(r.RequestURI, "/")
 		if len(split) < 5 {
 			http.Error(w, "ERROR: string name required in URL", http.StatusBadRequest)
+			core.SYNC <- 1
 			return
 		}
 		strName = strings.Trim(split[4], "\r\n")
@@ -361,6 +371,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			data, err := json.Marshal("deleted")
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+				core.SYNC <- 1
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
@@ -369,13 +380,16 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			// creation, updates
 			pl := stringsPayload{}
 			body, err := io.ReadAll(r.Body)
+			defer r.Body.Close()
 			if err != nil { // problem reading request body
 				http.Error(w, err.Error(), http.StatusBadRequest)
+				core.SYNC <- 1
 				return
 			}
 			err = json.Unmarshal(body, &pl)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+				core.SYNC <- 1
 				return
 			}
 			// input sanitization
@@ -388,6 +402,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			data, err := json.Marshal(core.LinkDataBase.Variables.Maps[strName])
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+				core.SYNC <- 1
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
@@ -433,6 +448,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 		split := strings.Split(r.RequestURI, "/")
 		if len(split) < 5 {
 			http.Error(w, "ERROR: map name required in URL", http.StatusBadRequest)
+			core.SYNC <- 1
 			return
 		}
 		mapName := split[4]
@@ -453,6 +469,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			data, err := json.Marshal("deleted")
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+				core.SYNC <- 1
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
@@ -461,13 +478,16 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 		case "POST":
 			pl := mapsPayload{}
 			body, err := io.ReadAll(r.Body)
+			defer r.Body.Close()
 			if err != nil { // problem reading request body
 				http.Error(w, err.Error(), http.StatusBadRequest)
+				core.SYNC <- 1
 				return
 			}
 			err = json.Unmarshal(body, &pl)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+				core.SYNC <- 1
 				return
 			}
 
@@ -480,6 +500,7 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 				// key is the first element, value is the second
 				if len(pair) <= 1 { // they didn't provide a separator
 					http.Error(w, "no separator was specified", http.StatusBadRequest)
+					core.SYNC <- 1
 					return
 				}
 				// fmt.Printf("map  - %s\n", pair) // TODO: space crashes this
@@ -494,10 +515,12 @@ func RouteAPI(w http.ResponseWriter, r *http.Request) {
 			data, err := json.Marshal(core.LinkDataBase.Variables.Maps[mapName])
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+				core.SYNC <- 1
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(data)
 		}
 	}
+	core.SYNC <- 1
 }

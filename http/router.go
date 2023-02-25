@@ -146,6 +146,7 @@ func RouteLink(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			// TODO: User needs to know why their keyword was bad.
 			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
 		if _, exists := core.LinkDataBase.Lists[keyword]; exists {
 			// TODO: need to figure out how to handle this edge case. add called when it already exists
@@ -312,7 +313,7 @@ func RouteLogin(w http.ResponseWriter, r *http.Request) {
 
 		// We always set a cookie. TTL determines login/logout
 		http.SetCookie(w, &cookie)
-		http.Redirect(w, r, fmt.Sprintf("%s/", r.Referer()), http.StatusFound)
+		http.Redirect(w, r, r.Referer(), http.StatusFound)
 	}
 }
 
@@ -675,7 +676,7 @@ func RouteSuggest(w http.ResponseWriter, r *http.Request) {
 	}
 	suggestionPrefix = r.URL.Query()["q"][0]
 
-	searchTerms := core.SearchDB(suggestionPrefix, 15)
+	searchTerms := core.SearchDB(suggestionPrefix, 15, core.SYNC)
 	core.LogDebug.Printf("suggest prefix: %s, terms: %s\n", suggestionPrefix, searchTerms)
 	// Other browsers *could* use these arrays, they're part of the standard/protocol.
 	reply := []interface{}{suggestionPrefix, searchTerms}
