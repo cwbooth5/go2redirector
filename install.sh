@@ -6,6 +6,7 @@
 
 GOCONFIG="go2config.json"
 GODB="godb.json"
+GOMETA="go2metadata.json"
 
 JSON=$(grep -v '^ *#' << EOF
 {
@@ -69,6 +70,14 @@ if [ ! -e $GODB ]; then
     cp "godb.json.init" $GODB
 else
     echo "$GODB already exists, not overwriting..."
+fi
+
+# write out a godb.json file with nothing inside
+if [ ! -e $GOMETA ]; then
+    echo "Writing out new empty $GOMETA..."
+    touch $GOMETA
+else
+    echo "$GOMETA already exists, not overwriting..."
 fi
 
 echo "Setup complete."

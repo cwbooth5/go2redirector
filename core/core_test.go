@@ -521,8 +521,93 @@ func TestExport(t *testing.T) {
 	}
 }
 
+func FuzzMakeNewKeyword(f *testing.F) {
+	f.Add("working")
+	f.Add("***")
+	f.Add("__++00@#$&!~`")
+	f.Fuzz(func(t *testing.T, s string) {
+		MakeNewKeyword(s)
+	})
+}
+
+func FuzzMakeNewlink(f *testing.F) {
+	f.Add("http://foo", "title")
+	f.Add("https://bar", "21398_+")
+	f.Add("__++00@#$&!~`", "--- ~~")
+	f.Add("", "")
+	f.Add("ftp:/whoops/", "")
+	f.Fuzz(func(t *testing.T, url string, title string) {
+		MakeNewlink(url, title)
+	})
+}
+
+func FuzzCreateStringVar(f *testing.F) {
+	if LinkDataBase.Variables == nil {
+		LinkDataBase.Variables = &UserVariables{}
+		LogDebug.Println("Variables data structure initialized")
+	}
+	f.Add("__++00@#$&!~`", "--- ~~")
+	f.Add("", "")
+	f.Add("get", "\\rekt")
+	f.Add("ftp:/whoops/", "")
+	f.Fuzz(func(t *testing.T, name string, value string) {
+		CreateStringVar(name, value)
+	})
+}
+
+func FuzzCreateMapVar(f *testing.F) {
+	if LinkDataBase.Variables == nil {
+		LinkDataBase.Variables = &UserVariables{}
+		LogDebug.Println("Variables data structure initialized")
+	}
+	f.Add("__++00@#$&!~`")
+	f.Add("")
+	f.Add("otters")
+	f.Fuzz(func(t *testing.T, name string) {
+		CreateMapVar(name)
+	})
+}
+
+func FuzzParsePath(f *testing.F) {
+	f.Add("__++00@#$&!~`")
+	f.Add("")
+	f.Add("check")
+	f.Add("/check")
+	f.Add("/kwd/anothertag/param4/another/oh/wow/even/more?")
+	f.Add(".foo/tag/param")
+	f.Add("http:/www.foo")
+	f.Fuzz(func(t *testing.T, path string) {
+		ParsePath(path)
+	})
+}
+
+func FuzzSanitizeURL(f *testing.F) {
+	f.Add("__++00@#$&!~`")
+	f.Add("")
+	f.Add("check")
+	f.Add("https://check/kwd/tag/param")
+	f.Add("/kwd/anothertag/param4/another/oh/wow/even/more?")
+	f.Add("slack://foo/tag/param")
+	f.Add("http:/www.foo")
+	f.Fuzz(func(t *testing.T, path string) {
+		url := SanitizeURL(path)
+		if !strings.HasPrefix(url, "http") && !strings.HasPrefix(url, "https") && !strings.HasPrefix(url, "slack") {
+			t.Errorf("sanitizeurl blew up on url: %s", url)
+		}
+	})
+}
+
+func FuzzGetLink(f *testing.F) {
+	f.Add(9, "")
+	f.Add(-45, "http://nope.local")
+	f.Fuzz(func(t *testing.T, id int, url string) {
+		LinkDataBase.GetLink(id, url)
+	})
+}
+
 // If this isn't here, logging calls during functions we are testing cause a SEGV
 func init() {
 	ConfigureLogging(true, os.Stdout)
-	SYNC <- 1
+
+	SYNC <- 1 // sync start point
 }
