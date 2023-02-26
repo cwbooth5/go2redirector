@@ -98,7 +98,7 @@ window.addEventListener('load', function() {
             <tr>
               <td>Title</td>
               <td>
-                <input type="text" name="title" class="form-control" value="{{ if ne $linkid 0 }}{{ .LinkBeingEdited.Title }}{{ end }}" placeholder=""/>
+                <input type="text" name="title" class="form-control" value="{{ if ne $linkid 0 }}{{ html .LinkBeingEdited.Title }}{{ end }}" placeholder=""/>
               </td>
             </tr>
 
@@ -242,7 +242,7 @@ window.addEventListener('load', function() {
         <p>The possible redirects to this link: <br>
         {{/* The check for the list here prevents crashes due to garbage returnto= fields input by the user */}}
         {{ $thislist := .GetMyList .Keyword }}
-       
+
         {{ $isNotLinkZero := ne .LinkBeingEdited.ID 0 }}
         {{ if and $isNotLinkZero $thislist }}
           {{ $usages := $thislist.GetUsages .LinkBeingEdited.ID }}
