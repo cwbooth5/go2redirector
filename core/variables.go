@@ -16,11 +16,20 @@ type UserVariables struct {
 func CreateStringVar(n, v string) {
 	// name and value come in from the user input
 	// TODO: what's the max length we will accept for name and value?
+	// LinkDataBase.Variables.Strings = make(map[string]string)
+	if LinkDataBase.Variables.Strings == nil {
+		LinkDataBase.Variables.Strings = make(map[string]string)
+		LogDebug.Println("String variables initialized")
+	}
 	LinkDataBase.Variables.Strings[n] = v
 }
 
 func CreateMapVar(n string) {
 	// temp := make(map[string]string)
+	if LinkDataBase.Variables.Maps == nil {
+		LinkDataBase.Variables.Maps = make(map[string]map[string]string)
+		LogDebug.Println("Map variables initialized")
+	}
 	LogDebug.Printf("initializing mapvar named '%s'\n", n)
 	LinkDataBase.Variables.Maps[n] = make(map[string]string)
 }
