@@ -38,7 +38,9 @@ func TestRouteAPIKeywords(t *testing.T) {
 	}
 }
 
-/* Notable test points:
+/*
+	Notable test points:
+
 - link ID is 0
 - burn is the expiretime
 - type == internal
@@ -46,7 +48,6 @@ func TestRouteAPIKeywords(t *testing.T) {
 func TestRouteAPILink(t *testing.T) {
 	// api/link
 	helpHandle := http.HandlerFunc(RouteAPI)
-
 	linkPost := url.Values{}
 	linkPost.Set("internal", "true")
 	linkPost.Set("returnto", "mykeyword")
@@ -155,4 +156,5 @@ func TestRouteAPIBadLinkID(t *testing.T) {
 // If this isn't here, logging calls during functions we are testing cause a SEGV
 func init() {
 	core.ConfigureLogging(true, os.Stdout)
+	core.SYNC <- 1
 }

@@ -25,7 +25,7 @@ jobs:
       run: ./install.sh
 
     - name: Test
-      run: go test -race -v ./...
+      run: ./test.sh
 
     - name: Build Container
       run: docker build . -t go2build
