@@ -596,14 +596,6 @@ func main() {
 		if core.LinkDataBase.Variables.Uses == nil {
 			core.LinkDataBase.Variables.Uses = make(map[string][]*core.Link)
 		}
-		if core.LinkDataBase.Variables.Strings == nil {
-			core.LinkDataBase.Variables.Strings = make(map[string]string)
-			core.LogDebug.Println("String variables initialized")
-		}
-		if core.LinkDataBase.Variables.Maps == nil {
-			core.LinkDataBase.Variables.Maps = make(map[string]map[string]string)
-			core.LogDebug.Println("Map variables initialized")
-		}
 		// Init LinkZero fields not created in previous revisions of the DB schema
 		// LinkVariables must not be null
 		if core.LinkDataBase.Links[0].LinkVariables == nil {

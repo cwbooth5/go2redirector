@@ -154,7 +154,6 @@ func MakeNewKeyword(kwd string) (Keyword, error) {
 	if err != nil {
 		LogError.Printf("Keyword could not be unescaped. '%s'\n", kwd)
 	}
-
 	// first strip known leading and trailing characters users are known to add
 	// first check for valid characters for a URL string
 	escaped = strings.TrimPrefix(escaped, ".")
@@ -418,6 +417,7 @@ func (d *LinkDatabase) Import(fh io.Reader, s chan int) error {
 	err = json.Unmarshal(data, &tempdb)
 	if err != nil {
 		LogError.Printf("json parsing error: %s", err)
+		s <- 1
 		return err
 	}
 
