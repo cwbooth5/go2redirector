@@ -166,9 +166,7 @@ func MakeNewKeyword(kwd string) (Keyword, error) {
 		if unicode.IsLetter(l) || unicode.IsDigit(l) || strings.ContainsAny(string(l), "-_ ~") {
 			continue
 		} else {
-			msg := "valid characters are ALPHA, DIGIT, or any of -_ ~"
-			LogDebug.Printf("Bad character at position %d: '%s'\n", idx, string(l))
-			LogDebug.Printf(msg)
+			msg := fmt.Sprintf("bad character at position %d: valid characters are ALPHA, DIGIT, or any of -_ ~", idx)
 			return Keyword(""), errors.New(msg)
 		}
 	}

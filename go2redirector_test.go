@@ -500,15 +500,38 @@ func TestConfigLoad(t *testing.T) {
 	if cfg.LocalListenPort == 0 {
 		t.Error("local listen port config option was unset")
 	}
-	// _, err := core.RenderConfig("nonexistent.file")
-	// if err == nil {
-	// 	t.Error("this config was not supposed to load (not found")
-	// }
+	_, err := core.RenderConfig("nonexistent.file")
+	if err == nil {
+		t.Error("this config was not supposed to load (not found")
+	}
 	// TODO: render a config with bad JSON
 	_, e := core.RenderConfig("README.md")
 	if e == nil {
 		t.Error("this config was not supposed to load (malformed")
 	}
+}
+
+/*
+The core webserver functionality
+This is just testing that we don't crash on random input.
+Eventually it should check responses.
+On that note, responses should probably be simplified a bit.
+*/
+func FuzzHappyHandler(f *testing.F) {
+	srv := httptest.NewServer(http.HandlerFunc(routeHappyHandler))
+	defer srv.Close()
+
+	f.Add("/")
+	f.Add("/hork")
+	f.Add("\\}32[::]")
+	f.Add("admin/login.php?missiles=armed")
+	f.Add(string("00!9 ....         \x89\x89\x89\x89     "))
+	f.Add("@@")
+	f.Add(string("000a0000'00900000000000"))
+	f.Add("/check/somekeyword/thetag/theparam")
+	f.Fuzz(func(t *testing.T, path string) {
+		http.DefaultClient.Get(fmt.Sprintf("%s/%s", srv.URL, path))
+	})
 }
 
 func init() {

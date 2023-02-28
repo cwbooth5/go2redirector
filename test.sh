@@ -6,6 +6,7 @@ set -e
 go test -v -race ./...
 
 # Fuzzing
+go test -fuzz FuzzHappyHandler -fuzztime 10000x
 pushd core
 go test -v -fuzz FuzzMakeNewKeyword -fuzztime 10000x
 go test -v -fuzz FuzzMakeNewlink -fuzztime 10000x
@@ -17,4 +18,7 @@ go test -v -fuzz FuzzGetLink -fuzztime 10000x
 popd
 pushd http
 go test -v -fuzz FuzzRouteLogin -fuzztime 10000x
+popd
+pushd api
+go test -fuzz FuzzTestRouteAPI -fuzztime 10000x
 popd
