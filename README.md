@@ -1,6 +1,6 @@
 # The Go2 Redirector
 
-[![Build Status](https://github.com/cwbooth5/go2redirector/actions/workflows/build.yml/badge.svg)](https://github.com/cwbooth5/go2redirector/actions/workflows/build.yml)
+[![Build Status](https://github.com/cwbooth5/go2redirector/actions/workflows/build.yml/badge.svg)](https://github.com/cwbooth5/go2redirector/actions/workflows/build.yml) [![codebeat badge](https://codebeat.co/badges/2166b0d3-f9d5-4a57-bd9d-3269f3963852)](https://codebeat.co/projects/github-com-cwbooth5-go2redirector-main)
 
 This is a mnemonic URL database, redirector, and search engine.
 
