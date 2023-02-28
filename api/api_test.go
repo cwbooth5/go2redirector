@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -79,7 +80,7 @@ func TestRouteAPILink(t *testing.T) {
 // This tests for a nasty bug if a bad link ID is provided in the form.
 func TestRouteAPIBadLinkID(t *testing.T) {
 	// api/link
-	helpHandle := http.HandlerFunc(RouteAPI)
+	apiHandle := http.HandlerFunc(RouteAPI)
 
 	linkPost := url.Values{}
 	linkPost.Set("internal", "true")
@@ -99,7 +100,7 @@ func TestRouteAPIBadLinkID(t *testing.T) {
 	r3.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	w3 := httptest.NewRecorder()
-	helpHandle.ServeHTTP(w3, r3)
+	apiHandle.ServeHTTP(w3, r3)
 
 	core.LogDebug.Println(core.FormatRequest(r3))
 
@@ -107,6 +108,36 @@ func TestRouteAPIBadLinkID(t *testing.T) {
 	if w3.Code != 404 {
 		t.Errorf("expected a 404, got: %d", w3.Code)
 	}
+}
+
+func FuzzTestRouteAPI(f *testing.F) {
+	srv := httptest.NewServer(http.HandlerFunc(RouteAPI))
+	defer srv.Close()
+
+	f.Add("true", "akeyword", 823498, "a title", "spaced tags", "http://www.example.com", "enable", "burn", "otherlists")
+	f.Add("false", "akeyword", -56, "a title", "spaced tags", "http://www.example.com", "disable", "6d2h", "otherlists")
+
+	f.Fuzz(func(t *testing.T, i string, k string, id int, ti string, tt string, u string, ll string, e string, o string) {
+		linkPost := url.Values{}
+		linkPost.Set("internal", i)
+		linkPost.Set("returnto", k)
+		linkPost.Set("linkid", fmt.Sprint(id))
+		linkPost.Set("title", ti)
+		linkPost.Set("tag", tt)
+		linkPost.Set("url", u)
+		linkPost.Set("linklog", ll)
+		linkPost.Set("expiretime", e)
+		linkPost.Set("otherlists", o)
+		encoded := strings.NewReader(linkPost.Encode())
+
+		_, err := http.DefaultClient.Post(fmt.Sprintf("%s/api/link/", srv.URL), "application/x-www-form-urlencoded", encoded)
+
+		if err != nil {
+			t.Errorf("Error: %v", err)
+		}
+		// TODO: check for status codes with certain inputs
+		// For now, fuzzing for crashes is fine.
+	})
 }
 
 // func TestRouteAPIDeleteLink(t *testing.T) {
